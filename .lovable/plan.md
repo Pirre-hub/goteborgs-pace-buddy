@@ -1,38 +1,38 @@
 ## Mål
-Lägg till AI-genererade träningsrekommendationer på dashboarden: nästa pass + en 7-dagars plan, anpassat mot 6:10/km på Göteborgsvarvet 23 maj 2026.
+Gör loppet/målet redigerbart så du själv kan byta till nästa lopp när Göteborgsvarvet 2026 är avklarat – utan att be mig ändra i koden.
 
 ## Hur det fungerar
 
-1. **Ny knapp "Hämta träningsråd"** överst på dashboarden (under countdown). När du klickar:
-   - Vi skickar dina senaste 30 löppass + målet (6:10/km, 21,1 km, racedatum) till en server-funktion.
-   - Server-funktionen anropar Lovable AI (Gemini 3 Flash) med en svensk löpcoach-prompt.
-   - AI:n returnerar strukturerad JSON via tool calling – ingen fri text att parsa.
+1. **Ny tabell `race_goal`** i databasen med ett aktivt mål åt gången:
+   - Loppnamn (t.ex. "Göteborgsvarvet 2026", "Stockholm Marathon 2026")
+   - Datum
+   - Distans (km)
+   - Måltempo (sek/km, lagras som tal – visas som 6:10/km)
+   - Sluttid räknas ut automatiskt från distans × tempo
 
-2. **Resultatet visas i två kort:**
-   - **Nästa pass** – typ (lugnt distanspass / intervall / tröskel / långpass / vila), distans, måltempo, syfte (1–2 meningar), och varför just detta nu baserat på din senaste belastning.
-   - **Veckoplan (7 dagar)** – tabell med dag, passtyp, distans/tid, tempo, kort kommentar.
+2. **Ny inställningssida `/settings`** nås via en kugghjulsikon i headern:
+   - Formulär med fyra fält: namn, datum, distans, måltempo (mm:ss/km)
+   - Knapp "Spara mål"
+   - Visar nuvarande aktivt mål överst
 
-3. **Cache:** Råden cachas 6 h i React Query så du inte bränner AI-kvot vid varje sidladdning. Knapp för "Generera nytt råd" finns alltid.
+3. **Dashboarden läser målet från databasen** istället för hårdkodade värden:
+   - Countdown, rubrik ("Göteborgsvarvet 2026"), måltempo-linje i grafen, AI-promptens kontext – allt drivs av aktivt mål.
+   - Om datumet passerats: countdown visar "Loppet är genomfört 🎉" + en knapp "Sätt nytt mål" som tar dig till `/settings`.
 
-## Underlag som skickas till AI:n
-- Senaste 30 pass: datum, distans, tid, tempo, snittpuls
-- Härledd statistik: veckovolym senaste 4 v, längsta pass, snittempo, dagar sedan senaste pass
-- Målkontext: 6:10/km, 21,1 km, dagar kvar till 23 maj 2026
-
-AI:n får uttryckliga regler: progressiv överbelastning max 10 %/v, minst 1 vilodag, långpass max ett per vecka, anpassa intensitet om senaste pass var hårt.
+4. **AI-coachen** får automatiskt det nya målet (datum, distans, tempo) i sin prompt så råden anpassas direkt efter att du bytt mål. Den hårdkodade "lopp-taktik"-texten (Slottsskogen/Örgrytebacken) blir generell istället – eller så låter vi AI:n generera taktiken när du klickar på en knapp, anpassat efter det aktuella loppet.
 
 ## Tekniska detaljer
+- **Migration:** Skapa `race_goal` (id, name, race_date, distance_km, goal_pace_sec, is_active, timestamps). Single-user → ingen `user_id`, ingen RLS-policy behövs men RLS aktiveras (deny-by-default) och vi läser/skriver via en server-funktion med admin-klienten. Seedar in nuvarande mål (Göteborgsvarvet, 2026-05-23, 21.1, 370 sek).
+- **Nya filer:**
+  - `src/lib/goal.functions.ts` – `getActiveGoal`, `updateGoal`
+  - `src/lib/goal.server.ts` – DB-anrop
+  - `src/routes/settings.tsx` – formulär
+- **Uppdatera:** `src/routes/index.tsx` (läs goal via React Query, ersätt hårdkodade konstanter), `src/lib/coach.functions.ts` + `coach.server.ts` (ta emot goal som input), `src/routes/__root.tsx` om vi lägger länk där.
+- **Lopp-taktik-kortet** byts till generella tips ("Spring jämnt, spara backarna, drick vid varje kontroll") så det fungerar för vilket långlopp som helst.
 
-- **Ny fil:** `src/lib/coach.functions.ts` – server function `getTrainingAdvice` som tar runs-arrayen, anropar Lovable AI Gateway via `fetch`, använder tool calling med JSON-schema (`next_session` + `week_plan[]`), returnerar typad data.
-- **Ny fil:** `src/lib/coach.server.ts` – håller AI-prompt och anrop, läser `LOVABLE_API_KEY` från `process.env` inuti handler.
-- **Uppdatera:** `src/routes/index.tsx` – lägg till två nya `Card`-sektioner + knapp + `useMutation` som triggar `getTrainingAdvice`.
-- **Felhantering:** Visa toast om 429 (rate limit) eller 402 (slut på krediter).
-- **Inga DB-ändringar** behövs – rekommendationerna sparas inte (bara cache i klienten). Kan läggas till senare om du vill spara historik.
+## Inte med
+- Historik över avklarade lopp (du sa att resultat inte behöver sparas)
+- Flera samtidiga mål
+- Loppspecifik bantaktik (Slottsskogen etc. försvinner)
 
-## Inte med i denna iteration
-- Sparad historik över råd
-- Push-notiser / mejl
-- Anpassning baserat på vädret eller kalender
-- Pulszoner (kan läggas till om du vill)
-
-Säg till om något ska ändras, annars trycker du "Implement plan" så bygger jag.
+Säg till om något ska justeras, annars trycker du "Implement plan".
