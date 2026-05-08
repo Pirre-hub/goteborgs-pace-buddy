@@ -171,6 +171,9 @@ function Dashboard() {
     onSuccess: () => window.location.reload(),
   });
 
+  const runs: Run[] = runsQuery.data?.runs ?? [];
+  const stats = useMemo(() => (runs.length ? computeStats(runs) : null), [runs]);
+
   if (conn.isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center text-muted-foreground">
@@ -182,10 +185,6 @@ function Dashboard() {
   if (!conn.data?.connected) {
     return <LoginScreen />;
   }
-
-  const runs: Run[] = runsQuery.data?.runs ?? [];
-
-  const stats = useMemo(() => computeStats(runs), [runs]);
 
   return (
     <div className="min-h-screen bg-background">
