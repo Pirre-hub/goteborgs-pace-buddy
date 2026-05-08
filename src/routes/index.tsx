@@ -12,6 +12,7 @@ import { getTrainingAdvice } from "@/lib/coach.functions";
 import { getActiveGoal } from "@/lib/goal.functions";
 import { toast } from "sonner";
 import { Sparkles, Loader2, Settings as SettingsIcon } from "lucide-react";
+import logoUrl from "@/assets/pirrecoachen-logo.png";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
