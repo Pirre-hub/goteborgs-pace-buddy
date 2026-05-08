@@ -174,11 +174,18 @@ function Dashboard() {
   const fetchRuns = useServerFn(stravaGetRuns);
   const disconnectFn = useServerFn(stravaDisconnect);
   const adviceFn = useServerFn(getTrainingAdvice);
+  const fetchGoal = useServerFn(getActiveGoal);
 
   const conn = useQuery({
     queryKey: ["strava-connected"],
     queryFn: () => checkConnected(),
   });
+
+  const goalQuery = useQuery({
+    queryKey: ["active-goal"],
+    queryFn: () => fetchGoal(),
+  });
+  const goal: Goal | null = goalQuery.data?.goal ?? null;
 
   const runsQuery = useQuery({
     queryKey: ["strava-runs"],
@@ -193,10 +200,14 @@ function Dashboard() {
   });
 
   const runs: Run[] = runsQuery.data?.runs ?? [];
-  const stats = useMemo(() => (runs.length ? computeStats(runs) : null), [runs]);
+  const stats = useMemo(
+    () => (runs.length && goal ? computeStats(runs, goal) : null),
+    [runs, goal],
+  );
 
   const adviceMut = useMutation({
     mutationFn: () => {
+      if (!goal) throw new Error("Inget mål satt");
       const payload = runs.map((r) => ({
         date: r.start_date_local,
         distance_km: +(r.distance / 1000).toFixed(2),
@@ -204,11 +215,22 @@ function Dashboard() {
         pace_sec_per_km: paceSecPerKm(r.distance, r.moving_time),
         avg_hr: r.average_heartrate,
       }));
-      return adviceFn({ data: { runs: payload } });
+      return adviceFn({
+        data: {
+          runs: payload,
+          goal: {
+            name: goal.name,
+            race_date: goal.race_date,
+            distance_km: goal.distance_km,
+            goal_pace_sec: goal.goal_pace_sec,
+          },
+        },
+      });
     },
     onError: (e: Error) => toast.error(e.message),
   });
   const advice = adviceMut.data?.advice;
+
 
 
   if (conn.isLoading) {
