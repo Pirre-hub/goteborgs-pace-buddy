@@ -440,11 +440,11 @@ function Dashboard() {
                       labelFormatter={(l) => `Pass: ${l}`}
                     />
                     <ReferenceLine
-                      y={goal.goal_pace_sec}
+                      y={goal!.goal_pace_sec}
                       stroke="#FC4C02"
                       strokeDasharray="4 4"
                       label={{
-                        value: `Mål ${formatPaceShort(goal.goal_pace_sec)}`,
+                        value: `Mål ${formatPaceShort(goal!.goal_pace_sec)}`,
                         position: "right",
                         fill: "#FC4C02",
                         fontSize: 11,
