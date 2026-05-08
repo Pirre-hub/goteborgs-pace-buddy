@@ -14,6 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
+      briefings: {
+        Row: {
+          content: string
+          created_at: string
+          date: string
+          workout: Json | null
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          date: string
+          workout?: Json | null
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          date?: string
+          workout?: Json | null
+        }
+        Relationships: []
+      }
+      pace_dna: {
+        Row: {
+          computed_at: string
+          id: number
+          insights: Json
+        }
+        Insert: {
+          computed_at?: string
+          id?: number
+          insights: Json
+        }
+        Update: {
+          computed_at?: string
+          id?: number
+          insights?: Json
+        }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+        }
+        Relationships: []
+      }
       race_goal: {
         Row: {
           created_at: string
@@ -47,6 +110,87 @@ export type Database = {
         }
         Relationships: []
       }
+      strava_activities: {
+        Row: {
+          average_heartrate: number | null
+          average_speed: number | null
+          created_at: string
+          detail_fetched_at: string | null
+          distance: number
+          elapsed_time: number | null
+          id: number
+          max_heartrate: number | null
+          moving_time: number
+          name: string
+          raw: Json | null
+          splits: Json | null
+          sport_type: string | null
+          start_date: string
+          start_date_local: string | null
+          total_elevation_gain: number | null
+          type: string | null
+        }
+        Insert: {
+          average_heartrate?: number | null
+          average_speed?: number | null
+          created_at?: string
+          detail_fetched_at?: string | null
+          distance: number
+          elapsed_time?: number | null
+          id: number
+          max_heartrate?: number | null
+          moving_time: number
+          name: string
+          raw?: Json | null
+          splits?: Json | null
+          sport_type?: string | null
+          start_date: string
+          start_date_local?: string | null
+          total_elevation_gain?: number | null
+          type?: string | null
+        }
+        Update: {
+          average_heartrate?: number | null
+          average_speed?: number | null
+          created_at?: string
+          detail_fetched_at?: string | null
+          distance?: number
+          elapsed_time?: number | null
+          id?: number
+          max_heartrate?: number | null
+          moving_time?: number
+          name?: string
+          raw?: Json | null
+          splits?: Json | null
+          sport_type?: string | null
+          start_date?: string
+          start_date_local?: string | null
+          total_elevation_gain?: number | null
+          type?: string | null
+        }
+        Relationships: []
+      }
+      strava_sync: {
+        Row: {
+          id: number
+          last_activity_id: number | null
+          last_event_at: string | null
+          subscription_id: number | null
+        }
+        Insert: {
+          id?: number
+          last_activity_id?: number | null
+          last_event_at?: string | null
+          subscription_id?: number | null
+        }
+        Update: {
+          id?: number
+          last_activity_id?: number | null
+          last_event_at?: string | null
+          subscription_id?: number | null
+        }
+        Relationships: []
+      }
       strava_tokens: {
         Row: {
           access_token: string
@@ -70,6 +214,33 @@ export type Database = {
           expires_at?: number
           id?: number
           refresh_token?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      training_load: {
+        Row: {
+          atl: number
+          ctl: number
+          daily_tss: number
+          date: string
+          tsb: number
+          updated_at: string
+        }
+        Insert: {
+          atl?: number
+          ctl?: number
+          daily_tss?: number
+          date: string
+          tsb?: number
+          updated_at?: string
+        }
+        Update: {
+          atl?: number
+          ctl?: number
+          daily_tss?: number
+          date?: string
+          tsb?: number
           updated_at?: string
         }
         Relationships: []
