@@ -72,14 +72,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
+      { title: "Pirrepace" },
+      { name: "description", content: "Göteborgs Runner Tracker är en webbapp som visualiserar din löpträning från Strava för att förbereda dig inför Göteborgsvarvet." },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { property: "og:title", content: "Pirrepace" },
+      { property: "og:description", content: "Göteborgs Runner Tracker är en webbapp som visualiserar din löpträning från Strava för att förbereda dig inför Göteborgsvarvet." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "Pirrepace" },
+      { name: "twitter:description", content: "Göteborgs Runner Tracker är en webbapp som visualiserar din löpträning från Strava för att förbereda dig inför Göteborgsvarvet." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/3d189308-5cd2-44d9-a734-6cfbfd7138a3/id-preview-50661686--5ae69e35-3aa9-464c-840c-198e7310512e.lovable.app-1778238984241.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/3d189308-5cd2-44d9-a734-6cfbfd7138a3/id-preview-50661686--5ae69e35-3aa9-464c-840c-198e7310512e.lovable.app-1778238984241.png" },
     ],
     links: [
       {
