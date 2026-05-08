@@ -272,6 +272,105 @@ function Dashboard() {
               />
             </section>
 
+            <Card className="border-strava/30">
+              <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-strava" />
+                  AI-coach
+                </CardTitle>
+                <Button
+                  size="sm"
+                  onClick={() => adviceMut.mutate()}
+                  disabled={adviceMut.isPending || runs.length === 0}
+                  className="bg-strava hover:bg-strava/90 text-white"
+                >
+                  {adviceMut.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                      Tänker…
+                    </>
+                  ) : advice ? (
+                    "Generera nytt råd"
+                  ) : (
+                    "Hämta träningsråd"
+                  )}
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {!advice && !adviceMut.isPending && (
+                  <p className="text-sm text-muted-foreground">
+                    Få personliga råd om nästa pass och en plan för veckan
+                    baserat på din senaste träning.
+                  </p>
+                )}
+                {advice && (
+                  <div className="space-y-5">
+                    <p className="text-sm text-muted-foreground italic">
+                      {advice.summary}
+                    </p>
+
+                    <div className="rounded-lg border border-strava/40 bg-strava/5 p-4">
+                      <div className="text-xs uppercase tracking-wide text-strava font-semibold mb-2">
+                        Nästa pass
+                      </div>
+                      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 mb-2">
+                        <div className="text-lg font-semibold">
+                          {advice.next_session.type}
+                        </div>
+                        <div className="text-sm tabular-nums">
+                          {advice.next_session.distance_km} km
+                        </div>
+                        <div className="text-sm tabular-nums text-muted-foreground">
+                          {advice.next_session.target_pace}
+                        </div>
+                      </div>
+                      <p className="text-sm">{advice.next_session.purpose}</p>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        <span className="font-medium">Varför nu:</span>{" "}
+                        {advice.next_session.why_now}
+                      </p>
+                    </div>
+
+                    <div>
+                      <div className="text-xs uppercase tracking-wide text-muted-foreground font-semibold mb-2">
+                        Veckoplan
+                      </div>
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Dag</TableHead>
+                              <TableHead>Pass</TableHead>
+                              <TableHead className="text-right">Distans</TableHead>
+                              <TableHead className="text-right">Tempo</TableHead>
+                              <TableHead>Notering</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {advice.week_plan.map((d, i) => (
+                              <TableRow key={i}>
+                                <TableCell className="font-medium">{d.day}</TableCell>
+                                <TableCell>{d.type}</TableCell>
+                                <TableCell className="text-right tabular-nums">
+                                  {d.distance_km != null ? `${d.distance_km} km` : "–"}
+                                </TableCell>
+                                <TableCell className="text-right tabular-nums text-muted-foreground">
+                                  {d.target_pace || "–"}
+                                </TableCell>
+                                <TableCell className="text-sm text-muted-foreground">
+                                  {d.note}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">
