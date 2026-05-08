@@ -88,6 +88,16 @@ function formatKm(meters: number) {
   return `${(meters / 1000).toFixed(2)} km`;
 }
 
+function formatFinishTime(goal: { distance_km: number; goal_pace_sec: number }) {
+  const totalSec = Math.round(goal.distance_km * goal.goal_pace_sec);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  return h > 0
+    ? `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`
+    : `${m}:${s.toString().padStart(2, "0")}`;
+}
+
 function Countdown({ raceDate }: { raceDate: Date }) {
   const days = differenceInDays(raceDate, new Date());
   if (days < 0) {
