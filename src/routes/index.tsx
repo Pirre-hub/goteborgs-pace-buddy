@@ -201,7 +201,7 @@ function Dashboard() {
 
   const runs: Run[] = runsQuery.data?.runs ?? [];
   const stats = useMemo(
-    () => (runs.length && goal ? computeStats(runs, goal) : null),
+    () => (runs.length && goal ? computeStats(runs) : null),
     [runs, goal],
   );
 
