@@ -361,6 +361,10 @@ function Dashboard() {
               />
             </section>
 
+            <DailyBriefingCard />
+            <TrainingLoadChart />
+            <PaceDNACard />
+
             <Card className="border-strava/30">
               <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
                 <CardTitle className="text-base flex items-center gap-2">
