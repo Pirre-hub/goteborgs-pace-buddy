@@ -88,8 +88,18 @@ function formatKm(meters: number) {
   return `${(meters / 1000).toFixed(2)} km`;
 }
 
-function Countdown() {
-  const days = Math.max(0, differenceInDays(RACE_DATE, new Date()));
+function Countdown({ raceDate }: { raceDate: Date }) {
+  const days = differenceInDays(raceDate, new Date());
+  if (days < 0) {
+    return (
+      <div className="flex flex-col items-end gap-1">
+        <span className="text-2xl font-bold text-strava">Loppet är klart 🎉</span>
+        <Link to="/settings">
+          <Button size="sm" variant="outline">Sätt nytt mål</Button>
+        </Link>
+      </div>
+    );
+  }
   return (
     <div className="flex items-baseline gap-2">
       <span className="text-5xl font-bold text-strava tabular-nums">{days}</span>
