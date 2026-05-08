@@ -156,6 +156,7 @@ function Dashboard() {
   const checkConnected = useServerFn(stravaIsConnected);
   const fetchRuns = useServerFn(stravaGetRuns);
   const disconnectFn = useServerFn(stravaDisconnect);
+  const adviceFn = useServerFn(getTrainingAdvice);
 
   const conn = useQuery({
     queryKey: ["strava-connected"],
@@ -176,6 +177,22 @@ function Dashboard() {
 
   const runs: Run[] = runsQuery.data?.runs ?? [];
   const stats = useMemo(() => (runs.length ? computeStats(runs) : null), [runs]);
+
+  const adviceMut = useMutation({
+    mutationFn: () => {
+      const payload = runs.map((r) => ({
+        date: r.start_date_local,
+        distance_km: +(r.distance / 1000).toFixed(2),
+        moving_min: +(r.moving_time / 60).toFixed(1),
+        pace_sec_per_km: paceSecPerKm(r.distance, r.moving_time),
+        avg_hr: r.average_heartrate,
+      }));
+      return adviceFn({ data: { runs: payload } });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const advice = adviceMut.data?.advice;
+
 
   if (conn.isLoading) {
     return (
