@@ -559,21 +559,20 @@ function Dashboard() {
           </CardHeader>
           <CardContent className="text-sm space-y-2">
             <p>
-              <strong>Spring jämnt.</strong> Sikta på 6:10/km från start – starta
-              hellre 5–10 sek långsammare än för snabbt. De första 3 km i
-              Slottsskogen är trångt, låt pulsen sätta sig.
+              <strong>Spring jämnt.</strong> Håll målpacen från start – starta
+              hellre 5–10 sek/km långsammare än för snabbt och låt pulsen sätta sig.
             </p>
             <p>
-              <strong>Backarna.</strong> Spara energi i Örgrytebacken (km 8–10)
-              och Aschebergsgatan (km 18). Håll insatsen jämn, inte tempot.
+              <strong>Backarna.</strong> Håll insatsen jämn, inte tempot. Tappa
+              hellre några sekunder uppför och hämta igen på platt/utför.
             </p>
             <p>
               <strong>Vätska.</strong> Drick lite vid varje kontroll, särskilt
-              efter km 12. Tänk på salter om det är varmt.
+              efter halva loppet. Tänk på salter om det är varmt.
             </p>
             <p>
-              <strong>Slutet.</strong> Gå inte all-in förrän du är på Skånegatan
-              de sista 800 m. Då har du Ullevi-publiken som drar dig in i mål.
+              <strong>Slutet.</strong> Spara något till sista kilometern – det
+              är där du verkligen kan vinna eller tappa tid.
             </p>
           </CardContent>
         </Card>
