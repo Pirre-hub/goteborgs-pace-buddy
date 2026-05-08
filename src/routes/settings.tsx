@@ -3,12 +3,17 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { getActiveGoal, saveGoal } from "@/lib/goal.functions";
+import {
+  stravaBackfill,
+  stravaRegisterWebhook,
+} from "@/lib/strava.functions";
+import { getVapidKey, subscribePush } from "@/lib/push.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Bell, RefreshCw, Webhook } from "lucide-react";
 
 export const Route = createFileRoute("/settings")({
   component: SettingsPage,
@@ -163,7 +168,133 @@ function SettingsPage() {
             )}
           </CardContent>
         </Card>
+
+        <AdvancedSection />
       </main>
     </div>
+  );
+}
+
+function urlBase64ToUint8Array(base64: string) {
+  const padding = "=".repeat((4 - (base64.length % 4)) % 4);
+  const b64 = (base64 + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = atob(b64);
+  const arr = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; ++i) arr[i] = raw.charCodeAt(i);
+  return arr;
+}
+
+function AdvancedSection() {
+  const backfillFn = useServerFn(stravaBackfill);
+  const registerFn = useServerFn(stravaRegisterWebhook);
+  const vapidFn = useServerFn(getVapidKey);
+  const subscribeFn = useServerFn(subscribePush);
+
+  const backfillMut = useMutation({
+    mutationFn: () => backfillFn(),
+    onSuccess: (r) =>
+      toast.success(`Synkat ${r.synced} pass (${r.skipped} fanns redan)`),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const webhookMut = useMutation({
+    mutationFn: () =>
+      registerFn({
+        data: {
+          callbackUrl: `${window.location.origin}/api/public/strava-webhook`,
+        },
+      }),
+    onSuccess: (r) =>
+      toast.success(`Webhook aktiverad (id ${r.subscription_id})`),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const pushMut = useMutation({
+    mutationFn: async () => {
+      if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+        throw new Error("Push stöds inte i den här webbläsaren");
+      }
+      const perm = await Notification.requestPermission();
+      if (perm !== "granted") throw new Error("Notifieringar nekades");
+      const reg = await navigator.serviceWorker.register("/sw.js");
+      await navigator.serviceWorker.ready;
+      const { publicKey } = await vapidFn();
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
+      });
+      const json = sub.toJSON() as {
+        endpoint: string;
+        keys: { p256dh: string; auth: string };
+      };
+      return subscribeFn({
+        data: {
+          endpoint: json.endpoint,
+          keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
+        },
+      });
+    },
+    onSuccess: () => toast.success("Notifieringar aktiverade"),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <Card className="mt-6">
+      <CardHeader>
+        <CardTitle>Avancerat</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <div className="font-medium">Synka detaljerade pass</div>
+            <p className="text-sm text-muted-foreground">
+              Hämtar splits, höjd och puls för senaste 30 löppassen.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => backfillMut.mutate()}
+            disabled={backfillMut.isPending}
+          >
+            <RefreshCw className="h-4 w-4 mr-1" />
+            {backfillMut.isPending ? "Synkar…" : "Backfill"}
+          </Button>
+        </div>
+
+        <div className="flex items-center justify-between gap-3 flex-wrap border-t pt-3">
+          <div>
+            <div className="font-medium">Aktivera live-uppdatering</div>
+            <p className="text-sm text-muted-foreground">
+              Strava skickar nya pass till appen direkt.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => webhookMut.mutate()}
+            disabled={webhookMut.isPending}
+          >
+            <Webhook className="h-4 w-4 mr-1" />
+            {webhookMut.isPending ? "Aktiverar…" : "Aktivera webhook"}
+          </Button>
+        </div>
+
+        <div className="flex items-center justify-between gap-3 flex-wrap border-t pt-3">
+          <div>
+            <div className="font-medium">Morgon-notiser</div>
+            <p className="text-sm text-muted-foreground">
+              Få dagens briefing kl 06:30 som push på telefonen.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => pushMut.mutate()}
+            disabled={pushMut.isPending}
+          >
+            <Bell className="h-4 w-4 mr-1" />
+            {pushMut.isPending ? "Aktiverar…" : "Aktivera"}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

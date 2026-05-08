@@ -12,6 +12,8 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
+import { Route as ApiPublicStravaWebhookRouteImport } from './routes/api/public/strava-webhook'
+import { Route as ApiPublicDailyBriefingRouteImport } from './routes/api/public/daily-briefing'
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
@@ -28,35 +30,69 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
   path: '/auth/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicStravaWebhookRoute = ApiPublicStravaWebhookRouteImport.update({
+  id: '/api/public/strava-webhook',
+  path: '/api/public/strava-webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicDailyBriefingRoute = ApiPublicDailyBriefingRouteImport.update({
+  id: '/api/public/daily-briefing',
+  path: '/api/public/daily-briefing',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/settings': typeof SettingsRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/api/public/daily-briefing': typeof ApiPublicDailyBriefingRoute
+  '/api/public/strava-webhook': typeof ApiPublicStravaWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/settings': typeof SettingsRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/api/public/daily-briefing': typeof ApiPublicDailyBriefingRoute
+  '/api/public/strava-webhook': typeof ApiPublicStravaWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/settings': typeof SettingsRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/api/public/daily-briefing': typeof ApiPublicDailyBriefingRoute
+  '/api/public/strava-webhook': typeof ApiPublicStravaWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/settings' | '/auth/callback'
+  fullPaths:
+    | '/'
+    | '/settings'
+    | '/auth/callback'
+    | '/api/public/daily-briefing'
+    | '/api/public/strava-webhook'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/settings' | '/auth/callback'
-  id: '__root__' | '/' | '/settings' | '/auth/callback'
+  to:
+    | '/'
+    | '/settings'
+    | '/auth/callback'
+    | '/api/public/daily-briefing'
+    | '/api/public/strava-webhook'
+  id:
+    | '__root__'
+    | '/'
+    | '/settings'
+    | '/auth/callback'
+    | '/api/public/daily-briefing'
+    | '/api/public/strava-webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SettingsRoute: typeof SettingsRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
+  ApiPublicDailyBriefingRoute: typeof ApiPublicDailyBriefingRoute
+  ApiPublicStravaWebhookRoute: typeof ApiPublicStravaWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -82,6 +118,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/strava-webhook': {
+      id: '/api/public/strava-webhook'
+      path: '/api/public/strava-webhook'
+      fullPath: '/api/public/strava-webhook'
+      preLoaderRoute: typeof ApiPublicStravaWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/daily-briefing': {
+      id: '/api/public/daily-briefing'
+      path: '/api/public/daily-briefing'
+      fullPath: '/api/public/daily-briefing'
+      preLoaderRoute: typeof ApiPublicDailyBriefingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -89,6 +139,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SettingsRoute: SettingsRoute,
   AuthCallbackRoute: AuthCallbackRoute,
+  ApiPublicDailyBriefingRoute: ApiPublicDailyBriefingRoute,
+  ApiPublicStravaWebhookRoute: ApiPublicStravaWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

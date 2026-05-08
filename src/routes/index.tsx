@@ -1,15 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   stravaIsConnected,
   stravaGetRuns,
-  stravaExchangeCode,
   stravaDisconnect,
 } from "@/lib/strava.functions";
 import { getTrainingAdvice } from "@/lib/coach.functions";
 import { getActiveGoal } from "@/lib/goal.functions";
+import { supabase } from "@/integrations/supabase/client";
+import { TrainingLoadChart } from "@/components/TrainingLoadChart";
+import { PaceDNACard } from "@/components/PaceDNACard";
+import { DailyBriefingCard } from "@/components/DailyBriefingCard";
 import { toast } from "sonner";
 import { Sparkles, Loader2, Settings as SettingsIcon } from "lucide-react";
 import logoUrl from "@/assets/pirrecoachen-logo.png";
@@ -181,6 +184,7 @@ function LoginScreen() {
 }
 
 function Dashboard() {
+  const qc = useQueryClient();
   const checkConnected = useServerFn(stravaIsConnected);
   const fetchRuns = useServerFn(stravaGetRuns);
   const disconnectFn = useServerFn(stravaDisconnect);
@@ -202,8 +206,28 @@ function Dashboard() {
     queryKey: ["strava-runs"],
     queryFn: () => fetchRuns(),
     enabled: !!conn.data?.connected,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: true,
   });
+
+  // Auto-refresh on Strava webhook events via realtime
+  useEffect(() => {
+    if (!conn.data?.connected) return;
+    const channel = supabase
+      .channel("strava-sync")
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "strava_sync" },
+        () => {
+          qc.invalidateQueries({ queryKey: ["strava-runs"] });
+          qc.invalidateQueries({ queryKey: ["training-load"] });
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [conn.data?.connected, qc]);
 
   const disconnectMut = useMutation({
     mutationFn: () => disconnectFn(),
@@ -336,6 +360,10 @@ function Dashboard() {
                 value={stats.avgHr4w ? `${Math.round(stats.avgHr4w)} bpm` : "–"}
               />
             </section>
+
+            <DailyBriefingCard />
+            <TrainingLoadChart />
+            <PaceDNACard />
 
             <Card className="border-strava/30">
               <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
