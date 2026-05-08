@@ -251,14 +251,21 @@ function Dashboard() {
         <div className="max-w-6xl mx-auto px-4 py-6 flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold">
-              Göteborgsvarvet <span className="text-strava">2026</span>
+              {goal?.name ?? "Mitt lopp"}
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Mål: 21,1 km på 2:10:00 (6:10/km)
+              {goal
+                ? `Mål: ${goal.distance_km} km på ${formatFinishTime(goal)} (${formatPace(goal.goal_pace_sec)})`
+                : "Inget mål satt – gå till inställningar"}
             </p>
           </div>
-          <div className="flex items-center gap-4">
-            <Countdown />
+          <div className="flex items-center gap-2 sm:gap-4">
+            {goal && <Countdown raceDate={parseISO(goal.race_date)} />}
+            <Link to="/settings">
+              <Button variant="outline" size="sm" aria-label="Inställningar">
+                <SettingsIcon className="h-4 w-4" />
+              </Button>
+            </Link>
             <Button
               variant="outline"
               size="sm"
@@ -267,6 +274,7 @@ function Dashboard() {
               Logga ut
             </Button>
           </div>
+
         </div>
       </header>
 
