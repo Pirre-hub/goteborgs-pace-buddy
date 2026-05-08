@@ -165,3 +165,156 @@ export async function fetchRecentRuns(): Promise<StravaActivity[]> {
   const runs = all.filter((a) => a.type === "Run" || a.sport_type === "Run");
   return runs.slice(0, 30);
 }
+
+export type StravaActivityDetail = StravaActivity & {
+  splits_metric?: Array<{
+    distance: number;
+    elapsed_time: number;
+    moving_time: number;
+    average_speed: number;
+    average_heartrate?: number;
+    elevation_difference?: number;
+    split: number;
+  }>;
+  total_elevation_gain?: number;
+};
+
+export async function fetchActivityDetail(
+  id: number,
+): Promise<StravaActivityDetail | null> {
+  const token = await getValidAccessToken();
+  if (!token) return null;
+
+  const res = await fetch(`${API_BASE}/activities/${id}?include_all_efforts=false`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Strava detail-fel [${res.status}]: ${text}`);
+  }
+  return (await res.json()) as StravaActivityDetail;
+}
+
+export async function syncActivity(id: number) {
+  const detail = await fetchActivityDetail(id);
+  if (!detail) return null;
+  if (detail.type !== "Run" && detail.sport_type !== "Run") return null;
+
+  await supabaseAdmin.from("strava_activities").upsert({
+    id: detail.id,
+    name: detail.name,
+    distance: detail.distance,
+    moving_time: detail.moving_time,
+    elapsed_time: detail.elapsed_time,
+    type: detail.type,
+    sport_type: detail.sport_type,
+    start_date: detail.start_date,
+    start_date_local: detail.start_date_local,
+    average_heartrate: detail.average_heartrate ?? null,
+    max_heartrate: detail.max_heartrate ?? null,
+    average_speed: detail.average_speed,
+    total_elevation_gain: detail.total_elevation_gain ?? null,
+    splits: (detail.splits_metric ?? null) as never,
+    raw: detail as never,
+    detail_fetched_at: new Date().toISOString(),
+  });
+
+  await supabaseAdmin
+    .from("strava_sync")
+    .update({
+      last_event_at: new Date().toISOString(),
+      last_activity_id: detail.id,
+    })
+    .eq("id", 1);
+
+  return detail;
+}
+
+export async function backfillRecentRuns(): Promise<{
+  synced: number;
+  skipped: number;
+}> {
+  const runs = await fetchRecentRuns();
+  let synced = 0;
+  let skipped = 0;
+  for (const r of runs) {
+    const { data: existing } = await supabaseAdmin
+      .from("strava_activities")
+      .select("id, detail_fetched_at")
+      .eq("id", r.id)
+      .maybeSingle();
+    if (existing?.detail_fetched_at) {
+      skipped++;
+      continue;
+    }
+    try {
+      await syncActivity(r.id);
+      synced++;
+      await new Promise((r) => setTimeout(r, 250));
+    } catch (e) {
+      console.error("backfill fail", r.id, e);
+    }
+  }
+  return { synced, skipped };
+}
+
+export async function listCachedActivities(limit = 30) {
+  const { data, error } = await supabaseAdmin
+    .from("strava_activities")
+    .select("*")
+    .order("start_date", { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+export async function registerWebhook(callbackUrl: string, verifyToken: string) {
+  const clientSecret = process.env.STRAVA_CLIENT_SECRET;
+  if (!clientSecret) throw new Error("STRAVA_CLIENT_SECRET saknas");
+
+  // Strava only allows 1 push subscription per app — clean up first
+  const listRes = await fetch(
+    `https://www.strava.com/api/v3/push_subscriptions?client_id=${CLIENT_ID}&client_secret=${clientSecret}`,
+  );
+  if (listRes.ok) {
+    const existing = (await listRes.json()) as Array<{ id: number }>;
+    for (const s of existing) {
+      await fetch(
+        `https://www.strava.com/api/v3/push_subscriptions/${s.id}?client_id=${CLIENT_ID}&client_secret=${clientSecret}`,
+        { method: "DELETE" },
+      );
+    }
+  }
+
+  const form = new URLSearchParams();
+  form.set("client_id", CLIENT_ID);
+  form.set("client_secret", clientSecret);
+  form.set("callback_url", callbackUrl);
+  form.set("verify_token", verifyToken);
+
+  const res = await fetch("https://www.strava.com/api/v3/push_subscriptions", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: form.toString(),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Strava webhook reg-fel [${res.status}]: ${text}`);
+  }
+  const json = (await res.json()) as { id: number };
+  await supabaseAdmin
+    .from("strava_sync")
+    .update({ subscription_id: json.id })
+    .eq("id", 1);
+  return { subscription_id: json.id };
+}
+
+export async function getSyncState() {
+  const { data } = await supabaseAdmin
+    .from("strava_sync")
+    .select("*")
+    .eq("id", 1)
+    .maybeSingle();
+  return data;
+}

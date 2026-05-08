@@ -4,6 +4,10 @@ import {
   fetchRecentRuns,
   isConnected,
   disconnect,
+  backfillRecentRuns,
+  registerWebhook,
+  getSyncState,
+  listCachedActivities,
 } from "./strava.server";
 
 export const stravaIsConnected = createServerFn({ method: "GET" }).handler(
@@ -33,5 +37,33 @@ export const stravaGetRuns = createServerFn({ method: "GET" }).handler(
 export const stravaDisconnect = createServerFn({ method: "POST" }).handler(
   async () => {
     return disconnect();
+  },
+);
+
+export const stravaBackfill = createServerFn({ method: "POST" }).handler(
+  async () => {
+    return backfillRecentRuns();
+  },
+);
+
+export const stravaRegisterWebhook = createServerFn({ method: "POST" })
+  .inputValidator((data: { callbackUrl: string }) => {
+    if (!data?.callbackUrl) throw new Error("callbackUrl krävs");
+    return data;
+  })
+  .handler(async ({ data }) => {
+    const verifyToken = "pirrecoachen-verify-2026";
+    return registerWebhook(data.callbackUrl, verifyToken);
+  });
+
+export const stravaGetSyncState = createServerFn({ method: "GET" }).handler(
+  async () => {
+    return { state: await getSyncState() };
+  },
+);
+
+export const stravaListCached = createServerFn({ method: "GET" }).handler(
+  async () => {
+    return { activities: await listCachedActivities(30) };
   },
 );
