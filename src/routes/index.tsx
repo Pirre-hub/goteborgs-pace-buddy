@@ -12,6 +12,7 @@ import { getTrainingAdvice } from "@/lib/coach.functions";
 import { getActiveGoal } from "@/lib/goal.functions";
 import { toast } from "sonner";
 import { Sparkles, Loader2, Settings as SettingsIcon } from "lucide-react";
+import logoUrl from "@/assets/pirrecoachen-logo.png";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -259,15 +260,22 @@ function Dashboard() {
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card">
         <div className="max-w-6xl mx-auto px-4 py-6 flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold">
-              {goal?.name ?? "Mitt lopp"}
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              {goal
-                ? `Mål: ${goal.distance_km} km på ${formatFinishTime(goal)} (${formatPace(goal.goal_pace_sec)})`
-                : "Inget mål satt – gå till inställningar"}
-            </p>
+          <div className="flex items-center gap-3">
+            <img
+              src={logoUrl}
+              alt="Pirrecoachen logotyp"
+              width={48}
+              height={48}
+              className="h-12 w-12 shrink-0"
+            />
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold">Pirrecoachen</h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                {goal
+                  ? `${goal.name} – ${goal.distance_km} km på ${formatFinishTime(goal)} (${formatPace(goal.goal_pace_sec)})`
+                  : "Inget mål satt – gå till inställningar"}
+              </p>
+            </div>
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
             {goal && <Countdown raceDate={parseISO(goal.race_date)} />}
