@@ -184,6 +184,7 @@ function LoginScreen() {
 }
 
 function Dashboard() {
+  const qc = useQueryClient();
   const checkConnected = useServerFn(stravaIsConnected);
   const fetchRuns = useServerFn(stravaGetRuns);
   const disconnectFn = useServerFn(stravaDisconnect);
@@ -205,8 +206,28 @@ function Dashboard() {
     queryKey: ["strava-runs"],
     queryFn: () => fetchRuns(),
     enabled: !!conn.data?.connected,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: true,
   });
+
+  // Auto-refresh on Strava webhook events via realtime
+  useEffect(() => {
+    if (!conn.data?.connected) return;
+    const channel = supabase
+      .channel("strava-sync")
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "strava_sync" },
+        () => {
+          qc.invalidateQueries({ queryKey: ["strava-runs"] });
+          qc.invalidateQueries({ queryKey: ["training-load"] });
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [conn.data?.connected, qc]);
 
   const disconnectMut = useMutation({
     mutationFn: () => disconnectFn(),
