@@ -41,19 +41,25 @@ export const Route = createFileRoute("/")({
   component: Dashboard,
   head: () => ({
     meta: [
-      { title: "Träningsdashboard – Göteborgsvarvet 2026" },
+      { title: "Träningsdashboard" },
       {
         name: "description",
         content:
-          "Följ din träning mot Göteborgsvarvet 23 maj 2026. Tempo, distans och puls från Strava.",
+          "Följ din träning mot ditt mål. Tempo, distans och puls från Strava.",
       },
     ],
   }),
 });
 
-const RACE_DATE = new Date("2026-05-23T00:00:00+02:00");
-const GOAL_PACE_SEC = 6 * 60 + 10; // 6:10/km in seconds
 const CLIENT_ID = "235302";
+
+type Goal = {
+  id: string;
+  name: string;
+  race_date: string;
+  distance_km: number;
+  goal_pace_sec: number;
+};
 
 type Run = {
   id: number;
