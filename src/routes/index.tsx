@@ -223,7 +223,7 @@ function Dashboard() {
           </Card>
         )}
 
-        {runs.length > 0 && (
+        {runs.length > 0 && stats && (
           <>
             <section className="grid grid-cols-2 lg:grid-cols-5 gap-3">
               <StatCard
