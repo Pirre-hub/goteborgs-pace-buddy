@@ -1,15 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   stravaIsConnected,
   stravaGetRuns,
-  stravaExchangeCode,
   stravaDisconnect,
 } from "@/lib/strava.functions";
 import { getTrainingAdvice } from "@/lib/coach.functions";
 import { getActiveGoal } from "@/lib/goal.functions";
+import { supabase } from "@/integrations/supabase/client";
+import { TrainingLoadChart } from "@/components/TrainingLoadChart";
+import { PaceDNACard } from "@/components/PaceDNACard";
+import { DailyBriefingCard } from "@/components/DailyBriefingCard";
 import { toast } from "sonner";
 import { Sparkles, Loader2, Settings as SettingsIcon } from "lucide-react";
 import logoUrl from "@/assets/pirrecoachen-logo.png";
