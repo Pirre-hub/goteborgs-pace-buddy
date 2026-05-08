@@ -1,59 +1,38 @@
-# Strava Träningsdashboard – Göteborgsvarvet 2026
+## Mål
+Lägg till AI-genererade träningsrekommendationer på dashboarden: nästa pass + en 7-dagars plan, anpassat mot 6:10/km på Göteborgsvarvet 23 maj 2026.
 
-En personlig (single-user) träningsdashboard på svenska, ljust tema, med Strava-orange (#FC4C02) som accent. Räknar ned till loppet 23 maj 2026 och visar tempo mot målet 6:10 min/km.
+## Hur det fungerar
 
-## Autentisering (Strava OAuth)
+1. **Ny knapp "Hämta träningsråd"** överst på dashboarden (under countdown). När du klickar:
+   - Vi skickar dina senaste 30 löppass + målet (6:10/km, 21,1 km, racedatum) till en server-funktion.
+   - Server-funktionen anropar Lovable AI (Gemini 3 Flash) med en svensk löpcoach-prompt.
+   - AI:n returnerar strukturerad JSON via tool calling – ingen fri text att parsa.
 
-- "Logga in med Strava"-knapp på startsidan
-- OAuth flow: redirect till `https://www.strava.com/oauth/authorize` med `client_id=235302`, `scope=activity:read_all`, `response_type=code`
-- Callback-route `/auth/callback` tar emot `code` och anropar en server function som byter koden mot access/refresh-token via Strava (kräver Client Secret)
-- Eftersom det är "bara jag": tokens sparas i en `strava_tokens`-tabell i Lovable Cloud (en rad). Vid varje API-anrop kollar servern om access-token gått ut och refreshar automatiskt
-- Sidan är publik men visar ett tomt "logga in"-läge tills en token finns
+2. **Resultatet visas i två kort:**
+   - **Nästa pass** – typ (lugnt distanspass / intervall / tröskel / långpass / vila), distans, måltempo, syfte (1–2 meningar), och varför just detta nu baserat på din senaste belastning.
+   - **Veckoplan (7 dagar)** – tabell med dag, passtyp, distans/tid, tempo, kort kommentar.
 
-**Du behöver:** Strava Client Secret. Lägg också till callback-domänen `lovable.app` i Strava → Settings → API.
+3. **Cache:** Råden cachas 6 h i React Query så du inte bränner AI-kvot vid varje sidladdning. Knapp för "Generera nytt råd" finns alltid.
 
-## Data
+## Underlag som skickas till AI:n
+- Senaste 30 pass: datum, distans, tid, tempo, snittpuls
+- Härledd statistik: veckovolym senaste 4 v, längsta pass, snittempo, dagar sedan senaste pass
+- Målkontext: 6:10/km, 21,1 km, dagar kvar till 23 maj 2026
 
-Server function `getRuns` hämtar `/athlete/activities?per_page=30`, filtrerar `type === "Run"`, normaliserar till: datum, namn, distans (km), tid, tempo (min/km), snittpuls. Cachas i React Query 5 min.
+AI:n får uttryckliga regler: progressiv överbelastning max 10 %/v, minst 1 vilodag, långpass max ett per vecka, anpassa intensitet om senaste pass var hårt.
 
-## Dashboard-layout (svenska)
+## Tekniska detaljer
 
-**Header:** "Göteborgsvarvet 2026" + nedräkning (dagar/timmar) till 23 maj 2026.
+- **Ny fil:** `src/lib/coach.functions.ts` – server function `getTrainingAdvice` som tar runs-arrayen, anropar Lovable AI Gateway via `fetch`, använder tool calling med JSON-schema (`next_session` + `week_plan[]`), returnerar typad data.
+- **Ny fil:** `src/lib/coach.server.ts` – håller AI-prompt och anrop, läser `LOVABLE_API_KEY` från `process.env` inuti handler.
+- **Uppdatera:** `src/routes/index.tsx` – lägg till två nya `Card`-sektioner + knapp + `useMutation` som triggar `getTrainingAdvice`.
+- **Felhantering:** Visa toast om 429 (rate limit) eller 402 (slut på krediter).
+- **Inga DB-ändringar** behövs – rekommendationerna sparas inte (bara cache i klienten). Kan läggas till senare om du vill spara historik.
 
-**Statistikkort (5 st, responsiv grid):**
-- Senaste pass – distans + tempo
-- Längsta pass (av 30)
-- Snittempo senaste 4 veckor
-- Total distans senaste 4 veckor
-- Snittpuls senaste 4 veckor
+## Inte med i denna iteration
+- Sparad historik över råd
+- Push-notiser / mejl
+- Anpassning baserat på vädret eller kalender
+- Pulszoner (kan läggas till om du vill)
 
-**Grafer (Recharts):**
-- Tempotrend – linjediagram över 30 senaste pass, Y-axel min/km (inverterad så snabbare = uppåt), streckad referenslinje på 6:10
-- Distansdiagram – stapeldiagram över 30 senaste pass
-
-**Tabell:** Senaste 10 pass – Datum, Namn, Distans, Tempo, Puls.
-
-**Race-tips kort längst ned:** Statiskt taktikkort på svenska (t.ex. "Spring jämnt – sikta på 6:10/km från start. Spara energi i uppförsbackarna kring km 8–10. Drick vid varje vätskekontroll.").
-
-## Design
-
-- Ljust tema, vit/ljusgrå bakgrund, mörk text
-- Accent #FC4C02 på knappar, referenslinje, aktiva element, ikoner
-- Inter-typsnitt, stora siffror i statistikkort
-- Mobilvänligt: kort staplas, tabellen scrollar horisontellt
-
-## Teknik
-
-- TanStack Start + Tailwind + shadcn/ui (kort, tabell, knappar)
-- Recharts för graferna
-- Lovable Cloud (Supabase): tabell `strava_tokens` (access_token, refresh_token, expires_at), Client Secret som server-secret
-- Server functions: `stravaLogin` (returnerar auth-URL), `stravaCallback` (byter code→token, sparar), `getRuns` (refreshar vid behov, hämtar aktiviteter)
-- Allt UI-text på svenska
-
-## Steg
-
-1. Sätt upp Lovable Cloud + tabell för tokens, lägg till Strava Client Secret
-2. Bygg OAuth login + callback (server functions)
-3. Bygg `getRuns` server function med auto-refresh
-4. Bygg dashboard-route med statistikkort, grafer, tabell, nedräkning
-5. Styla med ljust tema + Strava-orange accent
+Säg till om något ska ändras, annars trycker du "Implement plan" så bygger jag.
