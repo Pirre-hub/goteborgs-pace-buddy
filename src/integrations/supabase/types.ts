@@ -14,7 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      strava_tokens: {
+        Row: {
+          access_token: string
+          athlete_id: number | null
+          expires_at: number
+          id: number
+          refresh_token: string
+          updated_at: string
+        }
+        Insert: {
+          access_token: string
+          athlete_id?: number | null
+          expires_at: number
+          id?: number
+          refresh_token: string
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string
+          athlete_id?: number | null
+          expires_at?: number
+          id?: number
+          refresh_token?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
