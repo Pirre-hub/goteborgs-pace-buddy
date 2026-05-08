@@ -8,6 +8,9 @@ import {
   stravaExchangeCode,
   stravaDisconnect,
 } from "@/lib/strava.functions";
+import { getTrainingAdvice } from "@/lib/coach.functions";
+import { toast } from "sonner";
+import { Sparkles, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
