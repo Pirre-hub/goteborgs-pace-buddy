@@ -3,12 +3,17 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { getActiveGoal, saveGoal } from "@/lib/goal.functions";
+import {
+  stravaBackfill,
+  stravaRegisterWebhook,
+} from "@/lib/strava.functions";
+import { getVapidKey, subscribePush } from "@/lib/push.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Bell, RefreshCw, Webhook } from "lucide-react";
 
 export const Route = createFileRoute("/settings")({
   component: SettingsPage,
