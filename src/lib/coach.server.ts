@@ -95,12 +95,22 @@ const TOOL = {
   },
 };
 
-export async function generateAdvice(runs: RunInput[]): Promise<CoachAdvice> {
+export type GoalContext = {
+  name: string;
+  race_date: string;
+  distance_km: number;
+  goal_pace_sec: number;
+};
+
+export async function generateAdvice(
+  runs: RunInput[],
+  goal: GoalContext,
+): Promise<CoachAdvice> {
   const apiKey = process.env.LOVABLE_API_KEY;
   if (!apiKey) throw new Error("LOVABLE_API_KEY saknas");
 
   const today = new Date();
-  const raceDate = new Date("2026-05-23");
+  const raceDate = new Date(goal.race_date);
   const daysToRace = Math.max(
     0,
     Math.round((raceDate.getTime() - today.getTime()) / 86400000),
@@ -119,7 +129,13 @@ export async function generateAdvice(runs: RunInput[]): Promise<CoachAdvice> {
     ? Math.round((today.getTime() - new Date(lastDate).getTime()) / 86400000)
     : null;
 
-  const system = `Du är en erfaren svensk löpcoach. Användaren tränar mot Göteborgsvarvet (halvmarathon, 21,1 km) den 23 maj 2026 med målet 6:10/km (sluttid ~2:10:00).
+  const goalPace = formatPace(goal.goal_pace_sec);
+  const finishMin = Math.round((goal.distance_km * goal.goal_pace_sec) / 60);
+  const finishH = Math.floor(finishMin / 60);
+  const finishM = finishMin % 60;
+  const finishStr = `${finishH}:${finishM.toString().padStart(2, "0")}`;
+
+  const system = `Du är en erfaren svensk löpcoach. Användaren tränar mot ${goal.name} (${goal.distance_km} km) den ${goal.race_date} med målet ${goalPace} (sluttid ~${finishStr}).
 
 Regler:
 - Progressiv överbelastning, max ~10 % volymökning per vecka.
@@ -127,7 +143,7 @@ Regler:
 - Variera passtyper: lugna distanspass (~75 % av volymen), 1 intervall/tröskelpass, 1 långpass.
 - Om senaste pass var hårt eller långt → föreslå lugnt pass eller vila.
 - Om volymen varit låg → bygg upp varsamt.
-- Anpassa måltempo: lugnt = 6:40-7:10/km, tröskel = 5:30-5:50/km, intervaller = 4:40-5:10/km, långpass = 6:30-6:50/km.
+- Anpassa måltempo runt målpacen: lugnt ~30-60 sek/km långsammare, tröskel ~20-40 sek/km snabbare, intervaller ~60-90 sek/km snabbare, långpass nära målpace eller något långsammare.
 - Skriv allt på svenska, kort och konkret.`;
 
   const user = `Dagens datum: ${today.toISOString().slice(0, 10)}

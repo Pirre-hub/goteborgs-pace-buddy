@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      race_goal: {
+        Row: {
+          created_at: string
+          distance_km: number
+          goal_pace_sec: number
+          id: string
+          is_active: boolean
+          name: string
+          race_date: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          distance_km: number
+          goal_pace_sec: number
+          id?: string
+          is_active?: boolean
+          name: string
+          race_date: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          distance_km?: number
+          goal_pace_sec?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          race_date?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       strava_tokens: {
         Row: {
           access_token: string

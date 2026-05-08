@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -9,8 +9,9 @@ import {
   stravaDisconnect,
 } from "@/lib/strava.functions";
 import { getTrainingAdvice } from "@/lib/coach.functions";
+import { getActiveGoal } from "@/lib/goal.functions";
 import { toast } from "sonner";
-import { Sparkles, Loader2 } from "lucide-react";
+import { Sparkles, Loader2, Settings as SettingsIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,19 +41,25 @@ export const Route = createFileRoute("/")({
   component: Dashboard,
   head: () => ({
     meta: [
-      { title: "Träningsdashboard – Göteborgsvarvet 2026" },
+      { title: "Träningsdashboard" },
       {
         name: "description",
         content:
-          "Följ din träning mot Göteborgsvarvet 23 maj 2026. Tempo, distans och puls från Strava.",
+          "Följ din träning mot ditt mål. Tempo, distans och puls från Strava.",
       },
     ],
   }),
 });
 
-const RACE_DATE = new Date("2026-05-23T00:00:00+02:00");
-const GOAL_PACE_SEC = 6 * 60 + 10; // 6:10/km in seconds
 const CLIENT_ID = "235302";
+
+type Goal = {
+  id: string;
+  name: string;
+  race_date: string;
+  distance_km: number;
+  goal_pace_sec: number;
+};
 
 type Run = {
   id: number;
@@ -81,8 +88,28 @@ function formatKm(meters: number) {
   return `${(meters / 1000).toFixed(2)} km`;
 }
 
-function Countdown() {
-  const days = Math.max(0, differenceInDays(RACE_DATE, new Date()));
+function formatFinishTime(goal: { distance_km: number; goal_pace_sec: number }) {
+  const totalSec = Math.round(goal.distance_km * goal.goal_pace_sec);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  return h > 0
+    ? `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`
+    : `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+function Countdown({ raceDate }: { raceDate: Date }) {
+  const days = differenceInDays(raceDate, new Date());
+  if (days < 0) {
+    return (
+      <div className="flex flex-col items-end gap-1">
+        <span className="text-2xl font-bold text-strava">Loppet är klart 🎉</span>
+        <Link to="/settings">
+          <Button size="sm" variant="outline">Sätt nytt mål</Button>
+        </Link>
+      </div>
+    );
+  }
   return (
     <div className="flex items-baseline gap-2">
       <span className="text-5xl font-bold text-strava tabular-nums">{days}</span>
@@ -157,11 +184,18 @@ function Dashboard() {
   const fetchRuns = useServerFn(stravaGetRuns);
   const disconnectFn = useServerFn(stravaDisconnect);
   const adviceFn = useServerFn(getTrainingAdvice);
+  const fetchGoal = useServerFn(getActiveGoal);
 
   const conn = useQuery({
     queryKey: ["strava-connected"],
     queryFn: () => checkConnected(),
   });
+
+  const goalQuery = useQuery({
+    queryKey: ["active-goal"],
+    queryFn: () => fetchGoal(),
+  });
+  const goal: Goal | null = goalQuery.data?.goal ?? null;
 
   const runsQuery = useQuery({
     queryKey: ["strava-runs"],
@@ -176,10 +210,14 @@ function Dashboard() {
   });
 
   const runs: Run[] = runsQuery.data?.runs ?? [];
-  const stats = useMemo(() => (runs.length ? computeStats(runs) : null), [runs]);
+  const stats = useMemo(
+    () => (runs.length && goal ? computeStats(runs) : null),
+    [runs, goal],
+  );
 
   const adviceMut = useMutation({
     mutationFn: () => {
+      if (!goal) throw new Error("Inget mål satt");
       const payload = runs.map((r) => ({
         date: r.start_date_local,
         distance_km: +(r.distance / 1000).toFixed(2),
@@ -187,11 +225,22 @@ function Dashboard() {
         pace_sec_per_km: paceSecPerKm(r.distance, r.moving_time),
         avg_hr: r.average_heartrate,
       }));
-      return adviceFn({ data: { runs: payload } });
+      return adviceFn({
+        data: {
+          runs: payload,
+          goal: {
+            name: goal.name,
+            race_date: goal.race_date,
+            distance_km: goal.distance_km,
+            goal_pace_sec: goal.goal_pace_sec,
+          },
+        },
+      });
     },
     onError: (e: Error) => toast.error(e.message),
   });
   const advice = adviceMut.data?.advice;
+
 
 
   if (conn.isLoading) {
@@ -212,14 +261,21 @@ function Dashboard() {
         <div className="max-w-6xl mx-auto px-4 py-6 flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold">
-              Göteborgsvarvet <span className="text-strava">2026</span>
+              {goal?.name ?? "Mitt lopp"}
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Mål: 21,1 km på 2:10:00 (6:10/km)
+              {goal
+                ? `Mål: ${goal.distance_km} km på ${formatFinishTime(goal)} (${formatPace(goal.goal_pace_sec)})`
+                : "Inget mål satt – gå till inställningar"}
             </p>
           </div>
-          <div className="flex items-center gap-4">
-            <Countdown />
+          <div className="flex items-center gap-2 sm:gap-4">
+            {goal && <Countdown raceDate={parseISO(goal.race_date)} />}
+            <Link to="/settings">
+              <Button variant="outline" size="sm" aria-label="Inställningar">
+                <SettingsIcon className="h-4 w-4" />
+              </Button>
+            </Link>
             <Button
               variant="outline"
               size="sm"
@@ -228,6 +284,7 @@ function Dashboard() {
               Logga ut
             </Button>
           </div>
+
         </div>
       </header>
 
@@ -393,11 +450,11 @@ function Dashboard() {
                       labelFormatter={(l) => `Pass: ${l}`}
                     />
                     <ReferenceLine
-                      y={GOAL_PACE_SEC}
+                      y={goal!.goal_pace_sec}
                       stroke="#FC4C02"
                       strokeDasharray="4 4"
                       label={{
-                        value: "Mål 6:10",
+                        value: `Mål ${formatPaceShort(goal!.goal_pace_sec)}`,
                         position: "right",
                         fill: "#FC4C02",
                         fontSize: 11,
@@ -502,21 +559,20 @@ function Dashboard() {
           </CardHeader>
           <CardContent className="text-sm space-y-2">
             <p>
-              <strong>Spring jämnt.</strong> Sikta på 6:10/km från start – starta
-              hellre 5–10 sek långsammare än för snabbt. De första 3 km i
-              Slottsskogen är trångt, låt pulsen sätta sig.
+              <strong>Spring jämnt.</strong> Håll målpacen från start – starta
+              hellre 5–10 sek/km långsammare än för snabbt och låt pulsen sätta sig.
             </p>
             <p>
-              <strong>Backarna.</strong> Spara energi i Örgrytebacken (km 8–10)
-              och Aschebergsgatan (km 18). Håll insatsen jämn, inte tempot.
+              <strong>Backarna.</strong> Håll insatsen jämn, inte tempot. Tappa
+              hellre några sekunder uppför och hämta igen på platt/utför.
             </p>
             <p>
               <strong>Vätska.</strong> Drick lite vid varje kontroll, särskilt
-              efter km 12. Tänk på salter om det är varmt.
+              efter halva loppet. Tänk på salter om det är varmt.
             </p>
             <p>
-              <strong>Slutet.</strong> Gå inte all-in förrän du är på Skånegatan
-              de sista 800 m. Då har du Ullevi-publiken som drar dig in i mål.
+              <strong>Slutet.</strong> Spara något till sista kilometern – det
+              är där du verkligen kan vinna eller tappa tid.
             </p>
           </CardContent>
         </Card>
