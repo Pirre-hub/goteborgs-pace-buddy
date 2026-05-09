@@ -14,11 +14,13 @@ type Run = {
   average_heartrate?: number | null;
 };
 
-// Find best pace from runs in 3-12 km range across ALL available history
+// Aggregate best pace from runs in 3-12 km range across ALL history.
+// Uses the average of the top 5 fastest runs to avoid relying on a single race.
 export function bestRecentPaceSecPerKm(runs: Run[]): {
   pace: number;
   distance_km: number;
   date: string;
+  sampleSize: number;
 } | null {
   const candidates = runs
     .filter((r) => r.distance >= 3000 && r.distance <= 12000)
@@ -28,7 +30,16 @@ export function bestRecentPaceSecPerKm(runs: Run[]): {
       date: r.start_date_local,
     }))
     .sort((a, b) => a.pace - b.pace);
-  return candidates[0] ?? null;
+  if (!candidates.length) return null;
+  const top = candidates.slice(0, Math.min(5, candidates.length));
+  const avgPace = top.reduce((s, r) => s + r.pace, 0) / top.length;
+  const avgDist = top.reduce((s, r) => s + r.distance_km, 0) / top.length;
+  return {
+    pace: avgPace,
+    distance_km: avgDist,
+    date: top[0].date,
+    sampleSize: top.length,
+  };
 }
 
 // Jack Daniels VDOT calculation
