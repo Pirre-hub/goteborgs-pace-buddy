@@ -63,6 +63,9 @@ function Tile({
       <div className={`text-xs font-medium mt-1 ${TONE_CLASS[bench.tone]}`}>
         {bench.percentileText}
       </div>
+      <div className="text-xs text-muted-foreground mt-1">
+        Referens: {bench.referenceLabel}
+      </div>
       {hint && (
         <div className="text-xs text-muted-foreground mt-1">{hint}</div>
       )}

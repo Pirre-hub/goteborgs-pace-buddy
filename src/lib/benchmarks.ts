@@ -80,9 +80,10 @@ export function estimateVO2maxFromHR(
 // rough mapping based on Daniels' tables + age-grading
 export type Bench = {
   value: number;
-  label: string; // e.g. "47:32"
-  percentileText: string; // "Topp 10 %"
+  label: string;
+  percentileText: string;
   tone: "excellent" | "good" | "average" | "below";
+  referenceLabel: string; // median för referensgruppen
 };
 
 function percentileText(p: number): string {
@@ -173,6 +174,7 @@ export function vdotBench(vdot: number): Bench {
     label: vdot.toFixed(1),
     percentileText: percentileText(p),
     tone: toneFor(p),
+    referenceLabel: `median 35`,
   };
 }
 
@@ -183,6 +185,7 @@ export function cooperBench(meters: number): Bench {
     label: `${(meters / 1000).toFixed(2)} km`,
     percentileText: percentileText(p),
     tone: toneFor(p),
+    referenceLabel: `median 2,50 km`,
   };
 }
 
@@ -193,6 +196,7 @@ export function vo2Bench(vo2: number): Bench {
     label: `${vo2.toFixed(1)} ml/kg/min`,
     percentileText: percentileText(p),
     tone: toneFor(p),
+    referenceLabel: `median 25`,
   };
 }
 
@@ -203,5 +207,6 @@ export function hrBench(hr: number): Bench {
     label: `${Math.round(hr)} bpm`,
     percentileText: percentileText(p),
     tone: toneFor(p),
+    referenceLabel: `median 138 bpm`,
   };
 }
