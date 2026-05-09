@@ -258,25 +258,26 @@ export async function deepBackfillRuns(years = 3): Promise<{
   synced: number;
   skipped: number;
   scanned: number;
+  done: boolean;
 }> {
   const cutoffSec = Math.floor(Date.now() / 1000) - years * 365 * 86400;
+  const MAX_SYNC_PER_CALL = 150; // stay within Worker time limits
   let synced = 0;
   let skipped = 0;
   let scanned = 0;
   let page = 1;
   const perPage = 100;
+  let done = true;
 
-  while (true) {
+  outer: while (true) {
     const runs = await fetchRunsPage(perPage, page);
     if (!runs.length) break;
     scanned += runs.length;
 
-    let stop = false;
     for (const r of runs) {
       const startSec = Math.floor(new Date(r.start_date).getTime() / 1000);
       if (startSec < cutoffSec) {
-        stop = true;
-        break;
+        break outer;
       }
       const { data: existing } = await supabaseAdmin
         .from("strava_activities")
@@ -290,18 +291,21 @@ export async function deepBackfillRuns(years = 3): Promise<{
       try {
         await syncActivity(r.id);
         synced++;
-        await new Promise((r) => setTimeout(r, 200));
+        if (synced >= MAX_SYNC_PER_CALL) {
+          done = false;
+          break outer;
+        }
+        await new Promise((r) => setTimeout(r, 150));
       } catch (e) {
         console.error("deep-backfill fail", r.id, e);
       }
     }
 
-    if (stop) break;
     if (runs.length < perPage) break;
     page++;
-    if (page > 30) break; // safety: max ~3000 activities
+    if (page > 30) break;
   }
-  return { synced, skipped, scanned };
+  return { synced, skipped, scanned, done };
 }
 
 export async function backfillRecentRuns(): Promise<{
