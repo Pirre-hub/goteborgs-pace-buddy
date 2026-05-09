@@ -37,6 +37,44 @@ const SYMB: Record<number, string> = {
   27: "Kraftigt snöfall",
 };
 
+async function getWeatherFromOpenMeteo(
+  lat: number,
+  lon: number,
+): Promise<WeatherNow> {
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,precipitation,wind_speed_10m,weather_code&wind_speed_unit=ms`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Open-Meteo ${res.status}`);
+  const json = (await res.json()) as {
+    current?: {
+      temperature_2m?: number;
+      precipitation?: number;
+      wind_speed_10m?: number;
+      weather_code?: number;
+    };
+  };
+  const c = json.current ?? {};
+  const wmo = c.weather_code ?? null;
+  const symbol =
+    wmo == null ? null
+    : wmo === 0 ? 1
+    : wmo === 1 ? 2
+    : wmo === 2 ? 3
+    : wmo === 3 ? 6
+    : wmo === 45 || wmo === 48 ? 7
+    : wmo >= 51 && wmo <= 67 ? 19
+    : wmo >= 71 && wmo <= 77 ? 26
+    : wmo >= 80 && wmo <= 82 ? 9
+    : wmo >= 95 ? 21
+    : 5;
+  return {
+    temp_c: c.temperature_2m ?? null,
+    wind_ms: c.wind_speed_10m ?? null,
+    precip_mm: c.precipitation ?? null,
+    symbol,
+    description: symbol != null ? (SYMB[symbol] ?? "–") : "–",
+  };
+}
+
 export async function getWeatherForCoords(
   lat: number,
   lon: number,
