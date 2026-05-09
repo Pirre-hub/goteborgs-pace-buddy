@@ -7,14 +7,12 @@ import {
   stravaGetRuns,
   stravaDisconnect,
 } from "@/lib/strava.functions";
-import { getTrainingAdvice } from "@/lib/coach.functions";
 import { getActiveGoal } from "@/lib/goal.functions";
 import { supabase } from "@/integrations/supabase/client";
-import { TrainingLoadChart } from "@/components/TrainingLoadChart";
-import { PaceDNACard } from "@/components/PaceDNACard";
-import { DailyBriefingCard } from "@/components/DailyBriefingCard";
-import { toast } from "sonner";
-import { Sparkles, Loader2, Settings as SettingsIcon } from "lucide-react";
+import { WeatherStrip } from "@/components/WeatherStrip";
+import { CoachPlanCard } from "@/components/CoachPlanCard";
+import { BenchmarkCard } from "@/components/BenchmarkCard";
+import { Settings as SettingsIcon } from "lucide-react";
 import logoUrl from "@/assets/pirrecoachen-logo.png";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
