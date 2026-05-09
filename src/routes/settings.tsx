@@ -187,6 +187,7 @@ function urlBase64ToUint8Array(base64: string) {
 
 function AdvancedSection() {
   const backfillFn = useServerFn(stravaBackfill);
+  const deepBackfillFn = useServerFn(stravaDeepBackfill);
   const registerFn = useServerFn(stravaRegisterWebhook);
   const vapidFn = useServerFn(getVapidKey);
   const subscribeFn = useServerFn(subscribePush);
@@ -195,6 +196,15 @@ function AdvancedSection() {
     mutationFn: () => backfillFn(),
     onSuccess: (r) =>
       toast.success(`Synkat ${r.synced} pass (${r.skipped} fanns redan)`),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const deepBackfillMut = useMutation({
+    mutationFn: () => deepBackfillFn({ data: { years: 5 } }),
+    onSuccess: (r) =>
+      toast.success(
+        `Hämtade ${r.synced} pass av ${r.scanned} (${r.skipped} fanns redan)`,
+      ),
     onError: (e: Error) => toast.error(e.message),
   });
 
