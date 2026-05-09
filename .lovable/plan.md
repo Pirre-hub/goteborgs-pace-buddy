@@ -1,100 +1,97 @@
-# Pirrecoachen v2 – fyra nya beslutsstöd
 
-Fyra sammanhängande funktioner som förvandlar appen från en Strava-spegling till en aktiv coach. Allt körs på data du redan har + Lovable AI + Strava webhooks. Inga nya betal-API:er.
+## Ny disposition (top → bottom)
 
----
+1. **Väder idag** (kompakt rad, högst upp)
+2. **ACWR-coach + 7 dagars plan** (ersätter Daily Briefing + AI-coach-kortet)
+3. **Jämförelse mot referens** (4 nyckeltal, ersätter Form/belastning + Pace-DNA)
+4. **Senaste 10 pass** (oförändrad)
+5. **Tempo- och distanskurvor** (oförändrade)
 
-## 1. Form-peak (Banister Fitness-Fatigue / TSB)
-
-**Vad du ser:** En graf över 90 dagar med tre linjer:
-- **CTL** (form/uthållighet) – 42-dagars rullande träningsbelastning
-- **ATL** (trötthet) – 7-dagars rullande belastning  
-- **TSB** (form = CTL − ATL) – när TSB är positiv är du utvilad
-
-Plus en stor siffra: **"Din topp-form infaller ~14 maj. Tapering bör starta 11 maj."**
-
-**Hur det räknas:**
-- Per pass beräknas TSS (Training Stress Score) via rTSS-formeln: `(sek × NGP² / FTPace²) × 100/3600`. Tröskeltempo (FTPace) härleds från ditt `goal_pace_sec` × 1.06.
-- Daglig TSS aggregeras till `training_load`-tabell, CTL/ATL/TSB beräknas med exponentiella medelvärden.
-- Peak-datum predikteras genom att projicera nuvarande träning framåt mot lopp-datum och hitta dag då TSB först blir +5 till +25 (idealfönster).
+Tas bort från sidan: `DailyBriefingCard`, `TrainingLoadChart`, `PaceDNACard`, gamla "AI-coach"-kortet, samt nuvarande 5-statistikraden (snittempo/distans 4 v etc. – ersätts av jämförelsetalen).
 
 ---
 
-## 2. Pace-DNA (din löparprofil)
+### 1. Väderwidget (`WeatherStrip`)
 
-**Vad du ser:** En kort, personlig sammanfattning på 4–6 bullets, t.ex.:
-- *"Du är 8% snabbare på morgonpass än kvällspass"*
-- *"Din puls driftar +12 slag efter 60 min – uthållighetsträning saknas"*
-- *"På pass över 12 km tappar du 14 sek/km efter halva sträckan (positiv split)"*
-- *"Söndagar = dina starkaste pass. Lägg långpasset där."*
-- *"Backar (>4% lutning) drar 18% mer än flack mark – mer än genomsnitt"*
+- Försöker `navigator.geolocation.getCurrentPosition()` vid mount
+- Faller tillbaka på sparad lat/lon i `localStorage` (sätts i Settings; default 57.71/11.97 Göteborg)
+- Hämtar SMHI-prognos för innevarande dag via befintlig pattern i `briefing.server.ts`
+- Visar som en horisontell rad med ikoner: ☀️/🌧️/❄️ + temp °C, vind m/s, nederbörd mm
+- Server-fn: `getWeather({ lat, lon })` i `src/lib/weather.functions.ts`
 
-**Hur:** Server function hämtar detalj-data (splits, höjdmeter, puls per km) från Strava `/activities/{id}` för dina 30 senaste pass, cachar i ny `strava_activities`-tabell. En AI-analys (Lovable AI, Gemini Flash) får all data och returnerar 4–6 evidensbaserade insikter på svenska. Cachas 24h.
+### 2. ACWR-coach + rullande 7-dagars plan (`CoachPlanCard`)
 
----
+Ersätter både `DailyBriefingCard` och nuvarande AI-coach-rutan.
 
-## 3. Auto-refresh via Strava webhook
+**Coach-kommentar (överst i kortet):**
+- Beräknar ACWR (Acute:Chronic Workload Ratio) = TSS senaste 7 d / snitt-TSS senaste 28 d
+- Tolkning: <0.8 undertränad, 0.8–1.3 optimal, 1.3–1.5 hög risk, >1.5 skadezon
+- AI får: ACWR, senaste 7 pass, mål, dagar kvar → skriver 2–3 meningar prestationsanalys + hur kommande pass anpassas
+- Knapp "Uppdatera coach" + auto-trigga via Strava-webhook (utöka `strava-webhook.ts` att invalidera coach-cachen)
+- Cachas i ny tabell `coach_plan` (en rad, jsonb)
 
-**Vad du märker:** När du laddar upp ett pass i Strava syns det i Pirrecoachen direkt – ingen 5-minuters cache, ingen omladdning.
+**7 kommande pass (under kommentaren):**
+- Visas som **rutor** (samma look som nuvarande StatCard-grid, 2 kol mobil / 4 kol desktop)
+- Varje ruta: dag (Mån, Tis…), passtyp (ikon), distans, måltempo, kort syfte
+- Knapp **"Visa fler 7 dagar"** → expanderar med dag 8–14 som **enkla rader** (kompakt lista, inte rutor)
+- AI-prompten utökas: returnera 14 dagar i stället för 7, frontend visar 7 + collapsible 7
 
-**Hur:**
-- Ny offentlig endpoint `/api/public/strava-webhook` hanterar Stravas `GET` (verifierings-challenge) och `POST` (aktivitets-event).
-- Vid event: hämta aktiviteten från Strava, spara i `strava_activities`, räkna om dagens TSS, uppdatera `strava_sync.last_event_at`.
-- Frontend prenumererar via Supabase Realtime på `strava_sync` → vid ändring invalideras React Query → fräsch data utan refresh.
-- En engångs-knapp i Inställningar: "Aktivera webhook" → registrerar prenumeration hos Strava (`POST /push_subscriptions`).
+**Auto-uppdatering:** webhook → invalidera `coach_plan` → nästa render hämtar om. Manuell knapp finns alltid.
 
----
+### 3. Jämförelsetal (`BenchmarkCard`)
 
-## 4. Dagens briefing (pre-pass push + dashboard-kort)
+Hårdkodade profilvärden – **fyll i dessa innan implementation:**
+- Ålder: ?
+- Kön: man (antaget)
+- Vikt (kg): ?
+- Längd (cm): ?
 
-**Vad du ser varje morgon kl 06:30:**
+4 nyckeltal vs referens (män i din ålder, vikt, längd):
 
-> Push-notis: *"🏃 Idag: Tröskelpass 5×6 min @ 5:35/km. Du är utvilad (TSB +8). Värm upp 15 min."*
+| Nyckeltal | Beräkning | Referens |
+|---|---|---|
+| **VDOT** | Jack Daniels formel från ditt bästa 5 km-tempo senaste 90 d | VDOT-tabell per åldersgrupp |
+| **Cooper-test (12 min)** | Estimeras från ditt snabbaste 3–5 km-pass | Cooper-norm: utmärkt/bra/medel/svag |
+| **VO2max-skattning** | Från snittpuls + tempo (Uth-Sørensen-formel) | ACSM-percentiler för åldersgrupp |
+| **Vilopuls / HR-effektivitet** | Lägsta puls i lugna pass vs tempo | Norm för tränad löpare i åldersgruppen |
 
-Samma text finns alltid i ett "Dagens briefing"-kort högst upp på dashboarden.
+Visas som 2×2 grid med: nuvarande värde, percentil ("topp 25 %"), färgkodad indikator.
 
-**Hur:**
-- pg_cron körs 06:30 dagligen → anropar `/api/public/cron/daily-briefing`.
-- Endpoint: läs aktivt mål, senaste 7 pass, dagens CTL/ATL/TSB, väderprognos från SMHI för Göteborg → AI genererar dagens råd på svenska → spara i `briefings`-tabell → skicka web push till alla prenumeranter.
-- Web push: VAPID-baserad, opt-in via knapp i Inställningar. Service worker registreras i appen.
+Tabeller läggs som konstanter i `src/lib/benchmarks.ts` (ingen DB, ingen AI).
+
+### 4. + 5. Behålls oförändrat
+
+Senaste 10 pass-tabellen och tempo/distans-kurvorna lämnas som de är.
 
 ---
 
 ## Tekniska detaljer
 
-### Nya tabeller
-- **strava_activities**: full aktivitetscache (id, distance, moving_time, start_date, average_heartrate, total_elevation_gain, splits jsonb, raw jsonb)
-- **training_load**: per dag (date PK, daily_tss, ctl, atl, tsb)
-- **strava_sync**: webhook-status (id=1, last_event_at, subscription_id)
-- **pace_dna**: cachad AI-analys (id=1, insights jsonb, computed_at)
-- **briefings**: dagliga råd (date PK, content text, workout jsonb)
-- **push_subscriptions**: web push endpoints (id, endpoint, p256dh, auth, created_at)
+**Nya filer:**
+- `src/lib/weather.functions.ts` + `weather.server.ts`
+- `src/lib/coachplan.functions.ts` + `coachplan.server.ts` (ACWR + 14-dagarsplan)
+- `src/lib/benchmarks.ts` (referenstabeller + beräkningar, ren TS)
+- `src/components/WeatherStrip.tsx`
+- `src/components/CoachPlanCard.tsx`
+- `src/components/BenchmarkCard.tsx`
 
-Alla saknar RLS-användarkontext (single-user-app, samma mönster som befintliga `strava_tokens` och `race_goal`).
+**DB-migration:**
+- Ny tabell `coach_plan` (id=1, jsonb plan, jsonb commentary, computed_at). Ingen RLS (single-user app, samma mönster som `pace_dna`).
+- Behåll `briefings`, `pace_dna`, `training_load` i schemat (inga drops) men sluta läsa från dem.
 
-### Nya filer
-- `src/lib/training.functions.ts` + `training.server.ts` – CTL/ATL/TSB-beräkning, rTSS
-- `src/lib/dna.functions.ts` + `dna.server.ts` – AI-analys av Pace-DNA
-- `src/lib/briefing.functions.ts` + `briefing.server.ts` – dagens briefing-läsning
-- `src/lib/push.functions.ts` + `push.server.ts` – VAPID push-registrering & sändning
-- `src/lib/strava.server.ts` – utöka med `fetchActivityDetail`, `registerWebhook`, `syncActivity`
-- `src/routes/api/public/strava-webhook.ts` – webhook-mottagare
-- `src/routes/api/public/cron/daily-briefing.ts` – cron-trigger
-- `src/components/TrainingLoadChart.tsx`, `PaceDNACard.tsx`, `DailyBriefingCard.tsx`
-- `public/sw.js` – service worker för push
+**Webhook-utökning:**
+- `src/routes/api/public/strava-webhook.ts` raderar `coach_plan`-raden så nästa load regenererar.
 
-### Strava extra-anrop
-- `/activities/{id}` per nytt pass (hämtas via webhook eller engångs-backfill när Pace-DNA körs första gången) – väl inom Stravas rate limit (100/15min, 1000/dygn).
+**Borttaget från `src/routes/index.tsx`:**
+- Imports + render av `DailyBriefingCard`, `TrainingLoadChart`, `PaceDNACard`
+- Den befintliga `<section>` med 5 StatCards
+- Det stora "AI-coach"-kortet med veckotabellen (ersätts av `CoachPlanCard`)
 
-### Secrets som behövs
-- `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` – genereras automatiskt vid migration via Web Crypto, sparas som secrets.
+**Behålls:**
+- Header, mål/countdown, login-flöde, senaste 10 pass-tabell, tempo- och distanskurvorna
 
-### Risker / öppna punkter
-- **Web push i Worker-runtime**: standard `web-push`-paketet är Node-tungt. Använder ren Web Crypto + manuell VAPID-implementation (ca 80 rader, fungerar i Cloudflare Workers).
-- **Strava webhook-registrering**: kräver att appen redan är publicerad på en stabil URL (`project--{id}.lovable.app`) – fungerar i preview men Strava kan vara petig med dev-URLer. Plan B: kortare React Query staleTime (30 sek) som fallback.
-- **Backfill vid första körning**: Pace-DNA + form-peak behöver historisk data. Första körningen tar ~1 min för att hämta detaljer för 30 pass.
+---
 
-### Vad som INTE bygges nu
-- ACWR-belastningsvarning (#1) – TSB täcker mycket av samma nytta
-- Realistisk sluttidsprognos (#2) – kan läggas till senare som påbyggnad på training_load
-- 80/20-fördelning (#3), väderjustering (#4 – delvis i briefing), PR-tracker (#6), adaptiv plan (#7)
+## Innan jag bygger – behöver dina värden
+
+Svara med: **ålder, vikt (kg), längd (cm)** så hårdkodar jag dem i `benchmarks.ts`. Sen kör jag hela ombyggnaden i nästa svar.
