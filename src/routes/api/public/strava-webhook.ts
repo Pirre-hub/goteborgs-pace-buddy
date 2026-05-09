@@ -51,6 +51,7 @@ export const Route = createFileRoute("/api/public/strava-webhook")({
                 .eq("is_active", true)
                 .maybeSingle();
               await recomputeTrainingLoad(goal?.goal_pace_sec ?? 360);
+              await invalidatePlan();
             } catch (e) {
               console.error("webhook sync fail", e);
             }
