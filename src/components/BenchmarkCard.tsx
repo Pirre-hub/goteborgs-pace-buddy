@@ -70,7 +70,15 @@ function Tile({
   );
 }
 
-export function BenchmarkCard({ runs }: { runs: Run[] }) {
+export function BenchmarkCard({ runs: _fallback }: { runs: Run[] }) {
+  const listFn = useServerFn(stravaListCached);
+  const allQuery = useQuery({
+    queryKey: ["strava-cached-all"],
+    queryFn: () => listFn({ data: { limit: 5000 } }),
+    staleTime: 5 * 60 * 1000,
+  });
+  const runs: Run[] = (allQuery.data?.activities as Run[] | undefined) ?? _fallback;
+
   const best = bestRecentPaceSecPerKm(runs);
   const vdot = best
     ? calcVDOT(best.distance_km, best.distance_km * best.pace)
@@ -79,6 +87,7 @@ export function BenchmarkCard({ runs }: { runs: Run[] }) {
   const hrmin = lowestEasyHR(runs);
   const hrmax = estimateHRmax(PROFILE.age);
   const vo2 = hrmin ? estimateVO2maxFromHR(hrmax, hrmin) : null;
+  const sample = runs.length;
 
   return (
     <Card>
