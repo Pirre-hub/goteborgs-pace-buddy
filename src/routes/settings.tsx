@@ -5,6 +5,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { getActiveGoal, saveGoal } from "@/lib/goal.functions";
 import {
   stravaBackfill,
+  stravaDeepBackfill,
   stravaRegisterWebhook,
 } from "@/lib/strava.functions";
 import { getVapidKey, subscribePush } from "@/lib/push.functions";
@@ -186,6 +187,7 @@ function urlBase64ToUint8Array(base64: string) {
 
 function AdvancedSection() {
   const backfillFn = useServerFn(stravaBackfill);
+  const deepBackfillFn = useServerFn(stravaDeepBackfill);
   const registerFn = useServerFn(stravaRegisterWebhook);
   const vapidFn = useServerFn(getVapidKey);
   const subscribeFn = useServerFn(subscribePush);
@@ -194,6 +196,17 @@ function AdvancedSection() {
     mutationFn: () => backfillFn(),
     onSuccess: (r) =>
       toast.success(`Synkat ${r.synced} pass (${r.skipped} fanns redan)`),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const deepBackfillMut = useMutation({
+    mutationFn: () => deepBackfillFn({ data: { years: 5 } }),
+    onSuccess: (r) =>
+      toast.success(
+        r.done
+          ? `Klart! Hämtade ${r.synced} nya pass (${r.skipped} fanns redan)`
+          : `Hämtade ${r.synced} nya pass – kör igen för att fortsätta`,
+      ),
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -258,6 +271,24 @@ function AdvancedSection() {
           >
             <RefreshCw className="h-4 w-4 mr-1" />
             {backfillMut.isPending ? "Synkar…" : "Backfill"}
+          </Button>
+        </div>
+
+        <div className="flex items-center justify-between gap-3 flex-wrap border-t pt-3">
+          <div>
+            <div className="font-medium">Hämta hela historiken</div>
+            <p className="text-sm text-muted-foreground">
+              Hämtar alla löppass från Strava upp till 5 år bakåt. Tar några minuter
+              första gången – behövs för långsiktiga jämförelser.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => deepBackfillMut.mutate()}
+            disabled={deepBackfillMut.isPending}
+          >
+            <RefreshCw className="h-4 w-4 mr-1" />
+            {deepBackfillMut.isPending ? "Hämtar…" : "Full historik"}
           </Button>
         </div>
 

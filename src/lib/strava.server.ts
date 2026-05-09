@@ -231,6 +231,83 @@ export async function syncActivity(id: number) {
   return detail;
 }
 
+async function fetchRunsPage(
+  perPage: number,
+  page: number,
+  before?: number,
+): Promise<StravaActivity[]> {
+  const token = await getValidAccessToken();
+  if (!token) return [];
+  const params = new URLSearchParams({
+    per_page: String(perPage),
+    page: String(page),
+  });
+  if (before) params.set("before", String(before));
+  const res = await fetch(`${API_BASE}/athlete/activities?${params}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Strava API-fel [${res.status}]: ${text}`);
+  }
+  const all = (await res.json()) as StravaActivity[];
+  return all.filter((a) => a.type === "Run" || a.sport_type === "Run");
+}
+
+export async function deepBackfillRuns(years = 3): Promise<{
+  synced: number;
+  skipped: number;
+  scanned: number;
+  done: boolean;
+}> {
+  const cutoffSec = Math.floor(Date.now() / 1000) - years * 365 * 86400;
+  const MAX_SYNC_PER_CALL = 150; // stay within Worker time limits
+  let synced = 0;
+  let skipped = 0;
+  let scanned = 0;
+  let page = 1;
+  const perPage = 100;
+  let done = true;
+
+  outer: while (true) {
+    const runs = await fetchRunsPage(perPage, page);
+    if (!runs.length) break;
+    scanned += runs.length;
+
+    for (const r of runs) {
+      const startSec = Math.floor(new Date(r.start_date).getTime() / 1000);
+      if (startSec < cutoffSec) {
+        break outer;
+      }
+      const { data: existing } = await supabaseAdmin
+        .from("strava_activities")
+        .select("id, detail_fetched_at")
+        .eq("id", r.id)
+        .maybeSingle();
+      if (existing?.detail_fetched_at) {
+        skipped++;
+        continue;
+      }
+      try {
+        await syncActivity(r.id);
+        synced++;
+        if (synced >= MAX_SYNC_PER_CALL) {
+          done = false;
+          break outer;
+        }
+        await new Promise((r) => setTimeout(r, 150));
+      } catch (e) {
+        console.error("deep-backfill fail", r.id, e);
+      }
+    }
+
+    if (runs.length < perPage) break;
+    page++;
+    if (page > 30) break;
+  }
+  return { synced, skipped, scanned, done };
+}
+
 export async function backfillRecentRuns(): Promise<{
   synced: number;
   skipped: number;

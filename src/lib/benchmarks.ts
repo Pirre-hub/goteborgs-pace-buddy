@@ -14,20 +14,14 @@ type Run = {
   average_heartrate?: number | null;
 };
 
-// Find best pace on a run between 3-10 km, last 90 days
+// Find best pace from runs in 3-12 km range across ALL available history
 export function bestRecentPaceSecPerKm(runs: Run[]): {
   pace: number;
   distance_km: number;
   date: string;
 } | null {
-  const since = Date.now() - 90 * 86400000;
   const candidates = runs
-    .filter(
-      (r) =>
-        r.distance >= 3000 &&
-        r.distance <= 12000 &&
-        new Date(r.start_date_local).getTime() > since,
-    )
+    .filter((r) => r.distance >= 3000 && r.distance <= 12000)
     .map((r) => ({
       pace: r.moving_time / (r.distance / 1000),
       distance_km: r.distance / 1000,
@@ -57,14 +51,10 @@ export function estimateCooper12min(paceSecPerKm: number): number {
   return Math.round((720 / paceSecPerKm) * 1000);
 }
 
-// Lowest avg HR from easy/long runs in last 60d (proxy for fitness)
+// Lowest avg HR from runs >= 4 km across ALL available history (proxy for fitness)
 export function lowestEasyHR(runs: Run[]): number | null {
-  const since = Date.now() - 60 * 86400000;
   const easy = runs.filter(
-    (r) =>
-      r.average_heartrate &&
-      new Date(r.start_date_local).getTime() > since &&
-      r.distance >= 4000,
+    (r) => r.average_heartrate && r.distance >= 4000,
   );
   if (!easy.length) return null;
   return Math.min(...easy.map((r) => Number(r.average_heartrate)));

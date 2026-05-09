@@ -5,6 +5,7 @@ import {
   isConnected,
   disconnect,
   backfillRecentRuns,
+  deepBackfillRuns,
   registerWebhook,
   getSyncState,
   listCachedActivities,
@@ -46,6 +47,14 @@ export const stravaBackfill = createServerFn({ method: "POST" }).handler(
   },
 );
 
+export const stravaDeepBackfill = createServerFn({ method: "POST" })
+  .inputValidator((data: { years?: number } | undefined) => ({
+    years: Math.min(Math.max(data?.years ?? 3, 1), 10),
+  }))
+  .handler(async ({ data }) => {
+    return deepBackfillRuns(data.years);
+  });
+
 export const stravaRegisterWebhook = createServerFn({ method: "POST" })
   .inputValidator((data: { callbackUrl: string }) => {
     if (!data?.callbackUrl) throw new Error("callbackUrl krävs");
@@ -62,8 +71,10 @@ export const stravaGetSyncState = createServerFn({ method: "GET" }).handler(
   },
 );
 
-export const stravaListCached = createServerFn({ method: "GET" }).handler(
-  async () => {
-    return { activities: await listCachedActivities(30) };
-  },
-);
+export const stravaListCached = createServerFn({ method: "GET" })
+  .inputValidator((data: { limit?: number } | undefined) => ({
+    limit: Math.min(Math.max(data?.limit ?? 30, 1), 5000),
+  }))
+  .handler(async ({ data }) => {
+    return { activities: await listCachedActivities(data.limit) };
+  });
