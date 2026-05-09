@@ -62,13 +62,15 @@ export function estimateCooper12min(paceSecPerKm: number): number {
   return Math.round((720 / paceSecPerKm) * 1000);
 }
 
-// Lowest avg HR from runs >= 4 km across ALL available history (proxy for fitness)
+// Median of the 5 lowest avg HRs from easy runs >= 4 km (proxy for fitness)
 export function lowestEasyHR(runs: Run[]): number | null {
-  const easy = runs.filter(
-    (r) => r.average_heartrate && r.distance >= 4000,
-  );
+  const easy = runs
+    .filter((r) => r.average_heartrate && r.distance >= 4000)
+    .map((r) => Number(r.average_heartrate))
+    .sort((a, b) => a - b);
   if (!easy.length) return null;
-  return Math.min(...easy.map((r) => Number(r.average_heartrate)));
+  const top = easy.slice(0, Math.min(5, easy.length));
+  return top.reduce((s, v) => s + v, 0) / top.length;
 }
 
 // VO2max via Uth-Sørensen: VO2max = 15 * (HRmax / HRrest)
