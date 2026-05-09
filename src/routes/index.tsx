@@ -186,7 +186,6 @@ function Dashboard() {
   const checkConnected = useServerFn(stravaIsConnected);
   const fetchRuns = useServerFn(stravaGetRuns);
   const disconnectFn = useServerFn(stravaDisconnect);
-  const adviceFn = useServerFn(getTrainingAdvice);
   const fetchGoal = useServerFn(getActiveGoal);
 
   const conn = useQuery({
@@ -218,7 +217,7 @@ function Dashboard() {
         { event: "UPDATE", schema: "public", table: "strava_sync" },
         () => {
           qc.invalidateQueries({ queryKey: ["strava-runs"] });
-          qc.invalidateQueries({ queryKey: ["training-load"] });
+          qc.invalidateQueries({ queryKey: ["coach-plan"] });
         },
       )
       .subscribe();
@@ -237,32 +236,6 @@ function Dashboard() {
     () => (runs.length && goal ? computeStats(runs) : null),
     [runs, goal],
   );
-
-  const adviceMut = useMutation({
-    mutationFn: () => {
-      if (!goal) throw new Error("Inget mål satt");
-      const payload = runs.map((r) => ({
-        date: r.start_date_local,
-        distance_km: +(r.distance / 1000).toFixed(2),
-        moving_min: +(r.moving_time / 60).toFixed(1),
-        pace_sec_per_km: paceSecPerKm(r.distance, r.moving_time),
-        avg_hr: r.average_heartrate,
-      }));
-      return adviceFn({
-        data: {
-          runs: payload,
-          goal: {
-            name: goal.name,
-            race_date: goal.race_date,
-            distance_km: goal.distance_km,
-            goal_pace_sec: goal.goal_pace_sec,
-          },
-        },
-      });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-  const advice = adviceMut.data?.advice;
 
 
 
