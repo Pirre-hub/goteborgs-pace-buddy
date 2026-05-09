@@ -80,9 +80,10 @@ export function estimateVO2maxFromHR(
 // rough mapping based on Daniels' tables + age-grading
 export type Bench = {
   value: number;
-  label: string; // e.g. "47:32"
-  percentileText: string; // "Topp 10 %"
+  label: string;
+  percentileText: string;
   tone: "excellent" | "good" | "average" | "below";
+  referenceLabel: string; // median för referensgruppen
 };
 
 function percentileText(p: number): string {
