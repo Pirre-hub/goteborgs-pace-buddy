@@ -203,7 +203,9 @@ function AdvancedSection() {
     mutationFn: () => deepBackfillFn({ data: { years: 5 } }),
     onSuccess: (r) =>
       toast.success(
-        `Hämtade ${r.synced} pass av ${r.scanned} (${r.skipped} fanns redan)`,
+        r.done
+          ? `Klart! Hämtade ${r.synced} nya pass (${r.skipped} fanns redan)`
+          : `Hämtade ${r.synced} nya pass – kör igen för att fortsätta`,
       ),
     onError: (e: Error) => toast.error(e.message),
   });
