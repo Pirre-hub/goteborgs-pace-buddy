@@ -14,11 +14,13 @@ type Run = {
   average_heartrate?: number | null;
 };
 
-// Find best pace from runs in 3-12 km range across ALL available history
+// Aggregate best pace from runs in 3-12 km range across ALL history.
+// Uses the average of the top 5 fastest runs to avoid relying on a single race.
 export function bestRecentPaceSecPerKm(runs: Run[]): {
   pace: number;
   distance_km: number;
   date: string;
+  sampleSize: number;
 } | null {
   const candidates = runs
     .filter((r) => r.distance >= 3000 && r.distance <= 12000)
@@ -28,7 +30,16 @@ export function bestRecentPaceSecPerKm(runs: Run[]): {
       date: r.start_date_local,
     }))
     .sort((a, b) => a.pace - b.pace);
-  return candidates[0] ?? null;
+  if (!candidates.length) return null;
+  const top = candidates.slice(0, Math.min(5, candidates.length));
+  const avgPace = top.reduce((s, r) => s + r.pace, 0) / top.length;
+  const avgDist = top.reduce((s, r) => s + r.distance_km, 0) / top.length;
+  return {
+    pace: avgPace,
+    distance_km: avgDist,
+    date: top[0].date,
+    sampleSize: top.length,
+  };
 }
 
 // Jack Daniels VDOT calculation
@@ -51,13 +62,15 @@ export function estimateCooper12min(paceSecPerKm: number): number {
   return Math.round((720 / paceSecPerKm) * 1000);
 }
 
-// Lowest avg HR from runs >= 4 km across ALL available history (proxy for fitness)
+// Median of the 5 lowest avg HRs from easy runs >= 4 km (proxy for fitness)
 export function lowestEasyHR(runs: Run[]): number | null {
-  const easy = runs.filter(
-    (r) => r.average_heartrate && r.distance >= 4000,
-  );
+  const easy = runs
+    .filter((r) => r.average_heartrate && r.distance >= 4000)
+    .map((r) => Number(r.average_heartrate))
+    .sort((a, b) => a - b);
   if (!easy.length) return null;
-  return Math.min(...easy.map((r) => Number(r.average_heartrate)));
+  const top = easy.slice(0, Math.min(5, easy.length));
+  return top.reduce((s, v) => s + v, 0) / top.length;
 }
 
 // VO2max via Uth-Sørensen: VO2max = 15 * (HRmax / HRrest)
