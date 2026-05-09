@@ -274,6 +274,24 @@ function AdvancedSection() {
 
         <div className="flex items-center justify-between gap-3 flex-wrap border-t pt-3">
           <div>
+            <div className="font-medium">Hämta hela historiken</div>
+            <p className="text-sm text-muted-foreground">
+              Hämtar alla löppass från Strava upp till 5 år bakåt. Tar några minuter
+              första gången – behövs för långsiktiga jämförelser.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => deepBackfillMut.mutate()}
+            disabled={deepBackfillMut.isPending}
+          >
+            <RefreshCw className="h-4 w-4 mr-1" />
+            {deepBackfillMut.isPending ? "Hämtar…" : "Full historik"}
+          </Button>
+        </div>
+
+        <div className="flex items-center justify-between gap-3 flex-wrap border-t pt-3">
+          <div>
             <div className="font-medium">Aktivera live-uppdatering</div>
             <p className="text-sm text-muted-foreground">
               Strava skickar nya pass till appen direkt.
