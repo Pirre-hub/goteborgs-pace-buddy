@@ -120,27 +120,6 @@ function Countdown({ raceDate }: { raceDate: Date }) {
   );
 }
 
-function StatCard({
-  label,
-  value,
-  sub,
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-}) {
-  return (
-    <Card>
-      <CardContent className="p-5">
-        <div className="text-xs uppercase tracking-wide text-muted-foreground">
-          {label}
-        </div>
-        <div className="mt-2 text-2xl font-semibold tabular-nums">{value}</div>
-        {sub && <div className="mt-1 text-sm text-muted-foreground">{sub}</div>}
-      </CardContent>
-    </Card>
-  );
-}
 
 function LoginScreen() {
   const handleLogin = () => {
