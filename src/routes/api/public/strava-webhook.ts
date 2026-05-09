@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { syncActivity } from "@/lib/strava.server";
 import { recomputeTrainingLoad } from "@/lib/training.server";
+import { invalidatePlan } from "@/lib/coachplan.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 const VERIFY_TOKEN = "pirrecoachen-verify-2026";
@@ -50,6 +51,7 @@ export const Route = createFileRoute("/api/public/strava-webhook")({
                 .eq("is_active", true)
                 .maybeSingle();
               await recomputeTrainingLoad(goal?.goal_pace_sec ?? 360);
+              await invalidatePlan();
             } catch (e) {
               console.error("webhook sync fail", e);
             }

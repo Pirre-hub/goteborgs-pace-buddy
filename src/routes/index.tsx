@@ -7,14 +7,12 @@ import {
   stravaGetRuns,
   stravaDisconnect,
 } from "@/lib/strava.functions";
-import { getTrainingAdvice } from "@/lib/coach.functions";
 import { getActiveGoal } from "@/lib/goal.functions";
 import { supabase } from "@/integrations/supabase/client";
-import { TrainingLoadChart } from "@/components/TrainingLoadChart";
-import { PaceDNACard } from "@/components/PaceDNACard";
-import { DailyBriefingCard } from "@/components/DailyBriefingCard";
-import { toast } from "sonner";
-import { Sparkles, Loader2, Settings as SettingsIcon } from "lucide-react";
+import { WeatherStrip } from "@/components/WeatherStrip";
+import { CoachPlanCard } from "@/components/CoachPlanCard";
+import { BenchmarkCard } from "@/components/BenchmarkCard";
+import { Settings as SettingsIcon } from "lucide-react";
 import logoUrl from "@/assets/pirrecoachen-logo.png";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -122,27 +120,6 @@ function Countdown({ raceDate }: { raceDate: Date }) {
   );
 }
 
-function StatCard({
-  label,
-  value,
-  sub,
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-}) {
-  return (
-    <Card>
-      <CardContent className="p-5">
-        <div className="text-xs uppercase tracking-wide text-muted-foreground">
-          {label}
-        </div>
-        <div className="mt-2 text-2xl font-semibold tabular-nums">{value}</div>
-        {sub && <div className="mt-1 text-sm text-muted-foreground">{sub}</div>}
-      </CardContent>
-    </Card>
-  );
-}
 
 function LoginScreen() {
   const handleLogin = () => {
@@ -188,7 +165,6 @@ function Dashboard() {
   const checkConnected = useServerFn(stravaIsConnected);
   const fetchRuns = useServerFn(stravaGetRuns);
   const disconnectFn = useServerFn(stravaDisconnect);
-  const adviceFn = useServerFn(getTrainingAdvice);
   const fetchGoal = useServerFn(getActiveGoal);
 
   const conn = useQuery({
@@ -220,7 +196,7 @@ function Dashboard() {
         { event: "UPDATE", schema: "public", table: "strava_sync" },
         () => {
           qc.invalidateQueries({ queryKey: ["strava-runs"] });
-          qc.invalidateQueries({ queryKey: ["training-load"] });
+          qc.invalidateQueries({ queryKey: ["coach-plan"] });
         },
       )
       .subscribe();
@@ -239,32 +215,6 @@ function Dashboard() {
     () => (runs.length && goal ? computeStats(runs) : null),
     [runs, goal],
   );
-
-  const adviceMut = useMutation({
-    mutationFn: () => {
-      if (!goal) throw new Error("Inget mål satt");
-      const payload = runs.map((r) => ({
-        date: r.start_date_local,
-        distance_km: +(r.distance / 1000).toFixed(2),
-        moving_min: +(r.moving_time / 60).toFixed(1),
-        pace_sec_per_km: paceSecPerKm(r.distance, r.moving_time),
-        avg_hr: r.average_heartrate,
-      }));
-      return adviceFn({
-        data: {
-          runs: payload,
-          goal: {
-            name: goal.name,
-            race_date: goal.race_date,
-            distance_km: goal.distance_km,
-            goal_pace_sec: goal.goal_pace_sec,
-          },
-        },
-      });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-  const advice = adviceMut.data?.advice;
 
 
 
@@ -334,135 +284,11 @@ function Dashboard() {
 
         {runs.length > 0 && stats && (
           <>
-            <section className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-              <StatCard
-                label="Senaste pass"
-                value={formatKm(stats.last.distance)}
-                sub={formatPace(stats.last.pace)}
-              />
-              <StatCard
-                label="Längsta pass"
-                value={formatKm(stats.longest.distance)}
-                sub={format(parseISO(stats.longest.start_date_local), "d MMM", {
-                  locale: sv,
-                })}
-              />
-              <StatCard
-                label="Snittempo 4 v"
-                value={formatPace(stats.avgPace4w)}
-              />
-              <StatCard
-                label="Total distans 4 v"
-                value={`${stats.total4w.toFixed(1)} km`}
-              />
-              <StatCard
-                label="Snittpuls 4 v"
-                value={stats.avgHr4w ? `${Math.round(stats.avgHr4w)} bpm` : "–"}
-              />
-            </section>
+            <WeatherStrip />
 
-            <DailyBriefingCard />
-            <TrainingLoadChart />
-            <PaceDNACard />
+            <CoachPlanCard />
 
-            <Card className="border-strava/30">
-              <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-strava" />
-                  AI-coach
-                </CardTitle>
-                <Button
-                  size="sm"
-                  onClick={() => adviceMut.mutate()}
-                  disabled={adviceMut.isPending || runs.length === 0}
-                  className="bg-strava hover:bg-strava/90 text-white"
-                >
-                  {adviceMut.isPending ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                      Tänker…
-                    </>
-                  ) : advice ? (
-                    "Generera nytt råd"
-                  ) : (
-                    "Hämta träningsråd"
-                  )}
-                </Button>
-              </CardHeader>
-              <CardContent>
-                {!advice && !adviceMut.isPending && (
-                  <p className="text-sm text-muted-foreground">
-                    Få personliga råd om nästa pass och en plan för veckan
-                    baserat på din senaste träning.
-                  </p>
-                )}
-                {advice && (
-                  <div className="space-y-5">
-                    <p className="text-sm text-muted-foreground italic">
-                      {advice.summary}
-                    </p>
-
-                    <div className="rounded-lg border border-strava/40 bg-strava/5 p-4">
-                      <div className="text-xs uppercase tracking-wide text-strava font-semibold mb-2">
-                        Nästa pass
-                      </div>
-                      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 mb-2">
-                        <div className="text-lg font-semibold">
-                          {advice.next_session.type}
-                        </div>
-                        <div className="text-sm tabular-nums">
-                          {advice.next_session.distance_km} km
-                        </div>
-                        <div className="text-sm tabular-nums text-muted-foreground">
-                          {advice.next_session.target_pace}
-                        </div>
-                      </div>
-                      <p className="text-sm">{advice.next_session.purpose}</p>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        <span className="font-medium">Varför nu:</span>{" "}
-                        {advice.next_session.why_now}
-                      </p>
-                    </div>
-
-                    <div>
-                      <div className="text-xs uppercase tracking-wide text-muted-foreground font-semibold mb-2">
-                        Veckoplan
-                      </div>
-                      <div className="overflow-x-auto">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Dag</TableHead>
-                              <TableHead>Pass</TableHead>
-                              <TableHead className="text-right">Distans</TableHead>
-                              <TableHead className="text-right">Tempo</TableHead>
-                              <TableHead>Notering</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {advice.week_plan.map((d, i) => (
-                              <TableRow key={i}>
-                                <TableCell className="font-medium">{d.day}</TableCell>
-                                <TableCell>{d.type}</TableCell>
-                                <TableCell className="text-right tabular-nums">
-                                  {d.distance_km != null ? `${d.distance_km} km` : "–"}
-                                </TableCell>
-                                <TableCell className="text-right tabular-nums text-muted-foreground">
-                                  {d.target_pace || "–"}
-                                </TableCell>
-                                <TableCell className="text-sm text-muted-foreground">
-                                  {d.note}
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <BenchmarkCard runs={runs} />
 
             <Card>
               <CardHeader>
