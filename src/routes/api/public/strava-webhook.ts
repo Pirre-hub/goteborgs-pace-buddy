@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { syncActivity } from "@/lib/strava.server";
 import { recomputeTrainingLoad } from "@/lib/training.server";
+import { invalidatePlan } from "@/lib/coachplan.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 const VERIFY_TOKEN = "pirrecoachen-verify-2026";
