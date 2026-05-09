@@ -108,7 +108,7 @@ export function BenchmarkCard({ runs: _fallback }: { runs: Run[] }) {
           <Tile
             label="VDOT"
             bench={vdot != null ? vdotBench(vdot) : null}
-            hint={best ? `från ${best.distance_km.toFixed(1)} km-pass` : undefined}
+            hint={best ? `snitt av ${best.sampleSize} bästa pass (~${best.distance_km.toFixed(1)} km)` : undefined}
           />
           <Tile
             label="Cooper 12 min"
