@@ -5,6 +5,7 @@ import {
   isConnected,
   disconnect,
   backfillRecentRuns,
+  deepBackfillRuns,
   registerWebhook,
   getSyncState,
   listCachedActivities,
