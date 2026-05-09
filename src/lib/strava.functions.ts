@@ -71,8 +71,10 @@ export const stravaGetSyncState = createServerFn({ method: "GET" }).handler(
   },
 );
 
-export const stravaListCached = createServerFn({ method: "GET" }).handler(
-  async () => {
-    return { activities: await listCachedActivities(30) };
-  },
-);
+export const stravaListCached = createServerFn({ method: "GET" })
+  .inputValidator((data: { limit?: number } | undefined) => ({
+    limit: Math.min(Math.max(data?.limit ?? 30, 1), 5000),
+  }))
+  .handler(async ({ data }) => {
+    return { activities: await listCachedActivities(data.limit) };
+  });
