@@ -45,7 +45,10 @@ export async function getWeatherForCoords(
   const res = await fetch(url, {
     headers: { "User-Agent": "pirrecoachen/1.0" },
   });
-  if (!res.ok) throw new Error(`SMHI ${res.status}`);
+  if (!res.ok) {
+    // SMHI only covers the Nordics; fall back to Open-Meteo globally
+    return getWeatherFromOpenMeteo(lat, lon);
+  }
   const json = (await res.json()) as {
     timeSeries: Array<{
       validTime: string;
