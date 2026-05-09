@@ -98,6 +98,9 @@ export function BenchmarkCard({ runs: _fallback }: { runs: Run[] }) {
         </CardTitle>
       </CardHeader>
       <CardContent>
+        <div className="text-xs text-muted-foreground mb-3">
+          Baserat på {sample} pass i din Strava-historik
+        </div>
         <div className="grid grid-cols-2 gap-3">
           <Tile
             label="VDOT"
