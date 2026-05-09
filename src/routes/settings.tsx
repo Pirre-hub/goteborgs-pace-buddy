@@ -5,6 +5,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { getActiveGoal, saveGoal } from "@/lib/goal.functions";
 import {
   stravaBackfill,
+  stravaDeepBackfill,
   stravaRegisterWebhook,
 } from "@/lib/strava.functions";
 import { getVapidKey, subscribePush } from "@/lib/push.functions";
