@@ -35,6 +35,33 @@ export type Database = {
         }
         Relationships: []
       }
+      coach_plan: {
+        Row: {
+          acwr: number | null
+          acwr_zone: string | null
+          commentary: string
+          computed_at: string
+          id: number
+          plan: Json
+        }
+        Insert: {
+          acwr?: number | null
+          acwr_zone?: string | null
+          commentary: string
+          computed_at?: string
+          id?: number
+          plan: Json
+        }
+        Update: {
+          acwr?: number | null
+          acwr_zone?: string | null
+          commentary?: string
+          computed_at?: string
+          id?: number
+          plan?: Json
+        }
+        Relationships: []
+      }
       pace_dna: {
         Row: {
           computed_at: string
