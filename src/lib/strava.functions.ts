@@ -47,6 +47,14 @@ export const stravaBackfill = createServerFn({ method: "POST" }).handler(
   },
 );
 
+export const stravaDeepBackfill = createServerFn({ method: "POST" })
+  .inputValidator((data: { years?: number } | undefined) => ({
+    years: Math.min(Math.max(data?.years ?? 3, 1), 10),
+  }))
+  .handler(async ({ data }) => {
+    return deepBackfillRuns(data.years);
+  });
+
 export const stravaRegisterWebhook = createServerFn({ method: "POST" })
   .inputValidator((data: { callbackUrl: string }) => {
     if (!data?.callbackUrl) throw new Error("callbackUrl krävs");
