@@ -231,6 +231,79 @@ export async function syncActivity(id: number) {
   return detail;
 }
 
+async function fetchRunsPage(
+  perPage: number,
+  page: number,
+  before?: number,
+): Promise<StravaActivity[]> {
+  const token = await getValidAccessToken();
+  if (!token) return [];
+  const params = new URLSearchParams({
+    per_page: String(perPage),
+    page: String(page),
+  });
+  if (before) params.set("before", String(before));
+  const res = await fetch(`${API_BASE}/athlete/activities?${params}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Strava API-fel [${res.status}]: ${text}`);
+  }
+  const all = (await res.json()) as StravaActivity[];
+  return all.filter((a) => a.type === "Run" || a.sport_type === "Run");
+}
+
+export async function deepBackfillRuns(years = 3): Promise<{
+  synced: number;
+  skipped: number;
+  scanned: number;
+}> {
+  const cutoffSec = Math.floor(Date.now() / 1000) - years * 365 * 86400;
+  let synced = 0;
+  let skipped = 0;
+  let scanned = 0;
+  let page = 1;
+  const perPage = 100;
+
+  while (true) {
+    const runs = await fetchRunsPage(perPage, page);
+    if (!runs.length) break;
+    scanned += runs.length;
+
+    let stop = false;
+    for (const r of runs) {
+      const startSec = Math.floor(new Date(r.start_date).getTime() / 1000);
+      if (startSec < cutoffSec) {
+        stop = true;
+        break;
+      }
+      const { data: existing } = await supabaseAdmin
+        .from("strava_activities")
+        .select("id, detail_fetched_at")
+        .eq("id", r.id)
+        .maybeSingle();
+      if (existing?.detail_fetched_at) {
+        skipped++;
+        continue;
+      }
+      try {
+        await syncActivity(r.id);
+        synced++;
+        await new Promise((r) => setTimeout(r, 200));
+      } catch (e) {
+        console.error("deep-backfill fail", r.id, e);
+      }
+    }
+
+    if (stop) break;
+    if (runs.length < perPage) break;
+    page++;
+    if (page > 30) break; // safety: max ~3000 activities
+  }
+  return { synced, skipped, scanned };
+}
+
 export async function backfillRecentRuns(): Promise<{
   synced: number;
   skipped: number;
