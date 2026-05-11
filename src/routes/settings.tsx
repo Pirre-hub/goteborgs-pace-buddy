@@ -289,15 +289,64 @@ function AdvancedSection() {
       if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
         throw new Error("Push stöds inte i den här webbläsaren");
       }
-      const perm = await Notification.requestPermission();
+      // Notifications are blocked inside cross-origin iframes (Lovable preview).
+      // Detect and ask the user to open the app in its own tab.
+      const inIframe = (() => {
+        try {
+          return window.self !== window.top;
+        } catch {
+          return true;
+        }
+      })();
+      if (inIframe) {
+        const url = window.location.href;
+        window.open(url, "_blank", "noopener");
+        throw new Error(
+          "Öppna appen i en egen flik för att aktivera notiser (preview tillåter inte push i iframe).",
+        );
+      }
+      if (!window.isSecureContext) {
+        throw new Error("Push kräver HTTPS. Öppna den publicerade appen.");
+      }
+      let perm: NotificationPermission;
+      try {
+        perm = await Notification.requestPermission();
+      } catch (err) {
+        throw new Error(
+          `Kunde inte fråga om notis-tillstånd: ${(err as Error).message}`,
+        );
+      }
+      if (perm === "denied") {
+        throw new Error(
+          "Notiser är blockerade i webbläsaren. Tillåt dem i webbläsarinställningarna och försök igen.",
+        );
+      }
       if (perm !== "granted") throw new Error("Notifieringar nekades");
-      const reg = await navigator.serviceWorker.register("/sw.js");
-      await navigator.serviceWorker.ready;
+
+      let reg: ServiceWorkerRegistration;
+      try {
+        reg = await navigator.serviceWorker.register("/sw.js");
+        await navigator.serviceWorker.ready;
+      } catch (err) {
+        throw new Error(
+          `Kunde inte registrera service worker: ${(err as Error).message}`,
+        );
+      }
+
       const { publicKey } = await vapidFn();
-      const sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey),
-      });
+
+      let sub: PushSubscription;
+      try {
+        sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(publicKey),
+        });
+      } catch (err) {
+        throw new Error(
+          `Kunde inte prenumerera på push: ${(err as Error).message}`,
+        );
+      }
+
       const json = sub.toJSON() as {
         endpoint: string;
         keys: { p256dh: string; auth: string };
