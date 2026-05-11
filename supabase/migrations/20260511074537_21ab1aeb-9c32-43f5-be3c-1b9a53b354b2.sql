@@ -1,0 +1,1 @@
+ALTER TABLE public.coach_plan ADD COLUMN IF NOT EXISTS based_on_run jsonb;

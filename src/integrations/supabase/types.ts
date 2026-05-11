@@ -39,6 +39,7 @@ export type Database = {
         Row: {
           acwr: number | null
           acwr_zone: string | null
+          based_on_run: Json | null
           commentary: string
           computed_at: string
           id: number
@@ -47,6 +48,7 @@ export type Database = {
         Insert: {
           acwr?: number | null
           acwr_zone?: string | null
+          based_on_run?: Json | null
           commentary: string
           computed_at?: string
           id?: number
@@ -55,6 +57,7 @@ export type Database = {
         Update: {
           acwr?: number | null
           acwr_zone?: string | null
+          based_on_run?: Json | null
           commentary?: string
           computed_at?: string
           id?: number

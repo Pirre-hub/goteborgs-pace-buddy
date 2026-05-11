@@ -19,6 +19,7 @@ export type CoachPlan = {
   acwr_zone: "low" | "optimal" | "high" | "danger" | null;
   plan: PlanDay[];
   computed_at: string;
+  based_on_run?: { date: string; distance_km: number; pace: string };
 };
 
 const TOOL = {
@@ -111,7 +112,7 @@ const WEEKDAYS = ["Sön", "Mån", "Tis", "Ons", "Tor", "Fre", "Lör"];
 export async function getCachedPlan(): Promise<CoachPlan | null> {
   const { data } = await supabaseAdmin
     .from("coach_plan")
-    .select("commentary, acwr, acwr_zone, plan, computed_at")
+    .select("commentary, acwr, acwr_zone, plan, computed_at, based_on_run")
     .eq("id", 1)
     .maybeSingle();
   if (!data) return null;
@@ -121,6 +122,8 @@ export async function getCachedPlan(): Promise<CoachPlan | null> {
     acwr_zone: (data.acwr_zone as CoachPlan["acwr_zone"]) ?? null,
     plan: (data.plan as PlanDay[]) ?? [],
     computed_at: data.computed_at,
+    based_on_run:
+      (data.based_on_run as CoachPlan["based_on_run"]) ?? undefined,
   };
 }
 
@@ -174,6 +177,20 @@ export async function generatePlan(): Promise<CoachPlan> {
         `- ${r.start_date_local.slice(0, 10)}: ${(r.distance / 1000).toFixed(1)} km, ${Math.round(r.moving_time / 60)} min${r.average_heartrate ? `, puls ${Math.round(r.average_heartrate)}` : ""}`,
     )
     .join("\n");
+
+  const latestRun = runs[0] ?? null;
+  const based_on_run = latestRun
+    ? {
+        date: latestRun.start_date_local.slice(0, 10),
+        distance_km: +(latestRun.distance / 1000).toFixed(1),
+        pace: (() => {
+          const s = latestRun.moving_time / (latestRun.distance / 1000);
+          return `${Math.floor(s / 60)}:${Math.round(s % 60)
+            .toString()
+            .padStart(2, "0")}/km`;
+        })(),
+      }
+    : undefined;
 
   const goalLine = goal
     ? `Mål: ${goal.name} ${goal.distance_km} km @ ${Math.floor(goalPace / 60)}:${(goalPace % 60).toString().padStart(2, "0")}/km, ${Math.max(0, Math.round((new Date(goal.race_date).getTime() - Date.now()) / 86400000))} dagar kvar.`
@@ -240,6 +257,7 @@ Returnera kommentar (analys av senaste 7 dagar + hur planen anpassas) + 14 pass 
       acwr_zone: zone,
       plan: parsed.plan as never,
       computed_at,
+      based_on_run: (based_on_run ?? null) as never,
     },
     { onConflict: "id" },
   );
@@ -250,5 +268,6 @@ Returnera kommentar (analys av senaste 7 dagar + hur planen anpassas) + 14 pass 
     acwr_zone: zone,
     plan: parsed.plan,
     computed_at,
+    based_on_run,
   };
 }
