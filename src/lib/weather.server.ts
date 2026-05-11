@@ -42,7 +42,7 @@ async function getWeatherFromOpenMeteo(
   lon: number,
 ): Promise<WeatherNow> {
   const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,precipitation,wind_speed_10m,weather_code&wind_speed_unit=ms`;
-  const res = await fetch(url);
+  const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
   if (!res.ok) throw new Error(`Open-Meteo ${res.status}`);
   const json = (await res.json()) as {
     current?: {
@@ -75,17 +75,84 @@ async function getWeatherFromOpenMeteo(
   };
 }
 
+function metNoSymbol(symbolCode: string | undefined): number | null {
+  if (!symbolCode) return null;
+  const s = symbolCode.toLowerCase();
+  if (s.includes("clearsky")) return 1;
+  if (s.includes("fair")) return 2;
+  if (s.includes("partlycloudy")) return 3;
+  if (s.includes("cloudy")) return 5;
+  if (s.includes("fog")) return 7;
+  if (s.includes("thunder")) return 21;
+  if (s.includes("sleet")) return 23;
+  if (s.includes("snow")) return 26;
+  if (s.includes("rain") || s.includes("showers")) return 19;
+  return 5;
+}
+
+async function getWeatherFromMetNo(
+  lat: number,
+  lon: number,
+): Promise<WeatherNow> {
+  const url = `https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${lat.toFixed(4)}&lon=${lon.toFixed(4)}`;
+  const res = await fetch(url, {
+    headers: { "User-Agent": "pirrecoachen/1.0 contact: lovable-app" },
+    signal: AbortSignal.timeout(5000),
+  });
+  if (!res.ok) throw new Error(`MET Norway ${res.status}`);
+  const json = (await res.json()) as {
+    properties?: {
+      timeseries?: Array<{
+        data?: {
+          instant?: { details?: { air_temperature?: number; wind_speed?: number } };
+          next_1_hours?: {
+            summary?: { symbol_code?: string };
+            details?: { precipitation_amount?: number };
+          };
+        };
+      }>;
+    };
+  };
+  const point = json.properties?.timeseries?.[0]?.data;
+  if (!point?.instant?.details) throw new Error("Ingen prognosdata");
+  const symbol = metNoSymbol(point.next_1_hours?.summary?.symbol_code);
+  return {
+    temp_c: point.instant.details.air_temperature ?? null,
+    wind_ms: point.instant.details.wind_speed ?? null,
+    precip_mm: point.next_1_hours?.details?.precipitation_amount ?? null,
+    symbol,
+    description: symbol != null ? (SYMB[symbol] ?? "–") : "–",
+  };
+}
+
 export async function getWeatherForCoords(
   lat: number,
   lon: number,
 ): Promise<WeatherNow> {
+  try {
+    return await getWeatherFromMetNo(lat, lon);
+  } catch {
+    // Continue to SMHI/Open-Meteo fallbacks below.
+  }
+
   const url = `https://opendata-download-metfcst.smhi.se/api/category/pmp3g/version/2/geotype/point/lon/${lon.toFixed(2)}/lat/${lat.toFixed(2)}/data.json`;
   const res = await fetch(url, {
     headers: { "User-Agent": "pirrecoachen/1.0" },
-  });
-  if (!res.ok) {
+    signal: AbortSignal.timeout(5000),
+  }).catch(() => null);
+  if (!res || !res.ok) {
     // SMHI only covers the Nordics; fall back to Open-Meteo globally
-    return getWeatherFromOpenMeteo(lat, lon);
+    try {
+      return await getWeatherFromOpenMeteo(lat, lon);
+    } catch {
+      return {
+        temp_c: null,
+        wind_ms: null,
+        precip_mm: null,
+        symbol: null,
+        description: "Väder tillfälligt otillgängligt",
+      };
+    }
   }
   const json = (await res.json()) as {
     timeSeries: Array<{
