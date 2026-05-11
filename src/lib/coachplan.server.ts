@@ -19,6 +19,7 @@ export type CoachPlan = {
   acwr_zone: "low" | "optimal" | "high" | "danger" | null;
   plan: PlanDay[];
   computed_at: string;
+  based_on_run?: { date: string; distance_km: number; pace: string };
 };
 
 const TOOL = {
