@@ -7,14 +7,16 @@ import {
   stravaBackfill,
   stravaDeepBackfill,
   stravaRegisterWebhook,
+  stravaGetSyncState,
 } from "@/lib/strava.functions";
 import { getVapidKey, subscribePush } from "@/lib/push.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { ArrowLeft, Bell, RefreshCw, Webhook } from "lucide-react";
+import { ArrowLeft, Bell, CheckCircle2, RefreshCw, Webhook } from "lucide-react";
 
 export const Route = createFileRoute("/settings")({
   component: SettingsPage,
@@ -185,28 +187,86 @@ function urlBase64ToUint8Array(base64: string) {
   return arr;
 }
 
+function formatSwedishDate(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleString("sv-SE", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function ActiveBadge({ label }: { label: string }) {
+  return (
+    <Badge
+      variant="secondary"
+      className="bg-green-500/10 text-green-700 dark:text-green-400 border border-green-500/20 gap-1"
+    >
+      <CheckCircle2 className="h-3 w-3" />
+      {label}
+    </Badge>
+  );
+}
+
 function AdvancedSection() {
   const backfillFn = useServerFn(stravaBackfill);
   const deepBackfillFn = useServerFn(stravaDeepBackfill);
   const registerFn = useServerFn(stravaRegisterWebhook);
+  const syncStateFn = useServerFn(stravaGetSyncState);
   const vapidFn = useServerFn(getVapidKey);
   const subscribeFn = useServerFn(subscribePush);
 
+  const syncQuery = useQuery({
+    queryKey: ["strava-sync-state"],
+    queryFn: () => syncStateFn(),
+  });
+
+  const [backfillAt, setBackfillAt] = useState<string | null>(null);
+  const [deepBackfillAt, setDeepBackfillAt] = useState<string | null>(null);
+  const [deepBackfillDone, setDeepBackfillDone] = useState(false);
+  const [pushActive, setPushActive] = useState(false);
+
+  useEffect(() => {
+    setBackfillAt(localStorage.getItem("strava-backfill-at"));
+    setDeepBackfillAt(localStorage.getItem("strava-deep-backfill-at"));
+    setDeepBackfillDone(localStorage.getItem("strava-deep-backfill-done") === "1");
+    if ("serviceWorker" in navigator && "PushManager" in window) {
+      navigator.serviceWorker.getRegistration().then((reg) => {
+        reg?.pushManager.getSubscription().then((sub) => {
+          if (sub) setPushActive(true);
+        });
+      });
+    }
+  }, []);
+
   const backfillMut = useMutation({
     mutationFn: () => backfillFn(),
-    onSuccess: (r) =>
-      toast.success(`Synkat ${r.synced} pass (${r.skipped} fanns redan)`),
+    onSuccess: (r) => {
+      const now = new Date().toISOString();
+      localStorage.setItem("strava-backfill-at", now);
+      setBackfillAt(now);
+      toast.success(`Synkat ${r.synced} pass (${r.skipped} fanns redan)`);
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
   const deepBackfillMut = useMutation({
     mutationFn: () => deepBackfillFn({ data: { years: 5 } }),
-    onSuccess: (r) =>
+    onSuccess: (r) => {
+      const now = new Date().toISOString();
+      localStorage.setItem("strava-deep-backfill-at", now);
+      setDeepBackfillAt(now);
+      if (r.done) {
+        localStorage.setItem("strava-deep-backfill-done", "1");
+        setDeepBackfillDone(true);
+      }
       toast.success(
         r.done
           ? `Klart! Hämtade ${r.synced} nya pass (${r.skipped} fanns redan)`
           : `Hämtade ${r.synced} nya pass – kör igen för att fortsätta`,
-      ),
+      );
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -217,8 +277,10 @@ function AdvancedSection() {
           callbackUrl: `${window.location.origin}/api/public/strava-webhook`,
         },
       }),
-    onSuccess: (r) =>
-      toast.success(`Webhook aktiverad (id ${r.subscription_id})`),
+    onSuccess: (r) => {
+      toast.success(`Webhook aktiverad (id ${r.subscription_id})`);
+      syncQuery.refetch();
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -247,9 +309,14 @@ function AdvancedSection() {
         },
       });
     },
-    onSuccess: () => toast.success("Notifieringar aktiverade"),
+    onSuccess: () => {
+      setPushActive(true);
+      toast.success("Notifieringar aktiverade");
+    },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const webhookActive = !!syncQuery.data?.state?.subscription_id;
 
   return (
     <Card className="mt-6">
@@ -259,7 +326,12 @@ function AdvancedSection() {
       <CardContent className="space-y-3">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <div className="font-medium">Synka detaljerade pass</div>
+            <div className="font-medium flex items-center gap-2 flex-wrap">
+              Synka detaljerade pass
+              {backfillAt && (
+                <ActiveBadge label={`Senast: ${formatSwedishDate(backfillAt)}`} />
+              )}
+            </div>
             <p className="text-sm text-muted-foreground">
               Hämtar splits, höjd och puls för senaste 30 löppassen.
             </p>
@@ -270,13 +342,29 @@ function AdvancedSection() {
             disabled={backfillMut.isPending}
           >
             <RefreshCw className="h-4 w-4 mr-1" />
-            {backfillMut.isPending ? "Synkar…" : "Backfill"}
+            {backfillMut.isPending
+              ? "Synkar…"
+              : backfillAt
+                ? "Synka igen"
+                : "Backfill"}
           </Button>
         </div>
 
         <div className="flex items-center justify-between gap-3 flex-wrap border-t pt-3">
           <div>
-            <div className="font-medium">Hämta hela historiken</div>
+            <div className="font-medium flex items-center gap-2 flex-wrap">
+              Hämta hela historiken
+              {deepBackfillDone ? (
+                <ActiveBadge label="Klar" />
+              ) : deepBackfillAt ? (
+                <Badge
+                  variant="secondary"
+                  className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20"
+                >
+                  Pågår – kör igen
+                </Badge>
+              ) : null}
+            </div>
             <p className="text-sm text-muted-foreground">
               Hämtar alla löppass från Strava upp till 5 år bakåt. Tar några minuter
               första gången – behövs för långsiktiga jämförelser.
@@ -288,13 +376,22 @@ function AdvancedSection() {
             disabled={deepBackfillMut.isPending}
           >
             <RefreshCw className="h-4 w-4 mr-1" />
-            {deepBackfillMut.isPending ? "Hämtar…" : "Full historik"}
+            {deepBackfillMut.isPending
+              ? "Hämtar…"
+              : deepBackfillAt && !deepBackfillDone
+                ? "Fortsätt"
+                : deepBackfillDone
+                  ? "Hämta igen"
+                  : "Full historik"}
           </Button>
         </div>
 
         <div className="flex items-center justify-between gap-3 flex-wrap border-t pt-3">
           <div>
-            <div className="font-medium">Aktivera live-uppdatering</div>
+            <div className="font-medium flex items-center gap-2 flex-wrap">
+              Aktivera live-uppdatering
+              {webhookActive && <ActiveBadge label="Aktiverad" />}
+            </div>
             <p className="text-sm text-muted-foreground">
               Strava skickar nya pass till appen direkt.
             </p>
@@ -305,13 +402,20 @@ function AdvancedSection() {
             disabled={webhookMut.isPending}
           >
             <Webhook className="h-4 w-4 mr-1" />
-            {webhookMut.isPending ? "Aktiverar…" : "Aktivera webhook"}
+            {webhookMut.isPending
+              ? "Aktiverar…"
+              : webhookActive
+                ? "Återaktivera"
+                : "Aktivera webhook"}
           </Button>
         </div>
 
         <div className="flex items-center justify-between gap-3 flex-wrap border-t pt-3">
           <div>
-            <div className="font-medium">Morgon-notiser</div>
+            <div className="font-medium flex items-center gap-2 flex-wrap">
+              Morgon-notiser
+              {pushActive && <ActiveBadge label="Aktiverad" />}
+            </div>
             <p className="text-sm text-muted-foreground">
               Få dagens briefing kl 06:30 som push på telefonen.
             </p>
@@ -322,7 +426,11 @@ function AdvancedSection() {
             disabled={pushMut.isPending}
           >
             <Bell className="h-4 w-4 mr-1" />
-            {pushMut.isPending ? "Aktiverar…" : "Aktivera"}
+            {pushMut.isPending
+              ? "Aktiverar…"
+              : pushActive
+                ? "Återaktivera"
+                : "Aktivera"}
           </Button>
         </div>
       </CardContent>
