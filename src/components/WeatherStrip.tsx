@@ -37,25 +37,52 @@ export function WeatherStrip() {
   const [usingFallback, setUsingFallback] = useState(false);
 
   useEffect(() => {
-    if (!navigator.geolocation) {
+    const stored = typeof window !== "undefined" ? localStorage.getItem("user-coords") : null;
+    let parsed: { lat: number; lon: number } | null = null;
+    try {
+      parsed = stored ? (JSON.parse(stored) as { lat: number; lon: number }) : null;
+    } catch {
+      parsed = null;
+    }
+
+    // Always show something fast: cached coords, otherwise fallback.
+    if (parsed) {
+      setCoords(parsed);
+    } else {
       setCoords(FALLBACK);
       setUsingFallback(true);
-      return;
     }
-    const stored = localStorage.getItem("user-coords");
-    const parsed = stored ? (JSON.parse(stored) as { lat: number; lon: number }) : null;
+
+    if (!navigator.geolocation) return;
+
+    let settled = false;
+    const finish = (c: { lat: number; lon: number } | null, fallback: boolean) => {
+      if (settled) return;
+      settled = true;
+      if (c) {
+        setCoords(c);
+        setUsingFallback(fallback);
+        if (!fallback) localStorage.setItem("user-coords", JSON.stringify(c));
+      }
+    };
+
+    // Hard timeout — some mobile browsers never fire the geolocation callback
+    // (permission prompt dismissed, background tab, etc.).
+    const t = setTimeout(() => finish(null, false), 6000);
+
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        const c = { lat: pos.coords.latitude, lon: pos.coords.longitude };
-        setCoords(c);
-        localStorage.setItem("user-coords", JSON.stringify(c));
+        clearTimeout(t);
+        finish({ lat: pos.coords.latitude, lon: pos.coords.longitude }, false);
       },
       () => {
-        setCoords(parsed ?? FALLBACK);
-        setUsingFallback(!parsed);
+        clearTimeout(t);
+        finish(parsed ?? FALLBACK, !parsed);
       },
-      { timeout: 4000, maximumAge: 1000 * 60 * 30 },
+      { timeout: 5000, maximumAge: 1000 * 60 * 30, enableHighAccuracy: false },
     );
+
+    return () => clearTimeout(t);
   }, []);
 
   const fn = useServerFn(getWeather);
