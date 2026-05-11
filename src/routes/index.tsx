@@ -8,7 +8,9 @@ import {
   stravaDisconnect,
 } from "@/lib/strava.functions";
 import { getActiveGoal } from "@/lib/goal.functions";
+import { refreshCoachPlan } from "@/lib/coachplan.functions";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { WeatherStrip } from "@/components/WeatherStrip";
 import { CoachPlanCard } from "@/components/CoachPlanCard";
 import { BenchmarkCard } from "@/components/BenchmarkCard";
@@ -166,6 +168,7 @@ function Dashboard() {
   const fetchRuns = useServerFn(stravaGetRuns);
   const disconnectFn = useServerFn(stravaDisconnect);
   const fetchGoal = useServerFn(getActiveGoal);
+  const refreshFn = useServerFn(refreshCoachPlan);
 
   const conn = useQuery({
     queryKey: ["strava-connected"],
@@ -194,16 +197,18 @@ function Dashboard() {
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "strava_sync" },
-        () => {
+        async () => {
           qc.invalidateQueries({ queryKey: ["strava-runs"] });
+          await refreshFn();
           qc.invalidateQueries({ queryKey: ["coach-plan"] });
+          toast.info("Coach uppdaterad efter nytt Strava-pass");
         },
       )
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [conn.data?.connected, qc]);
+  }, [conn.data?.connected, qc, refreshFn]);
 
   const disconnectMut = useMutation({
     mutationFn: () => disconnectFn(),
