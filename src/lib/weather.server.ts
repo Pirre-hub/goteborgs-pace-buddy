@@ -139,7 +139,7 @@ export async function getWeatherForCoords(
   const res = await fetch(url, {
     headers: { "User-Agent": "pirrecoachen/1.0" },
     signal: AbortSignal.timeout(5000),
-  });
+  }).catch(() => null);
   if (!res.ok) {
     // SMHI only covers the Nordics; fall back to Open-Meteo globally
     try {
