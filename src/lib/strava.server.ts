@@ -231,7 +231,7 @@ export async function syncActivity(id: number) {
   return detail;
 }
 
-async function fetchRunsPage(
+async function fetchActivitiesPageRaw(
   perPage: number,
   page: number,
   before?: number,
@@ -250,8 +250,7 @@ async function fetchRunsPage(
     const text = await res.text();
     throw new Error(`Strava API-fel [${res.status}]: ${text}`);
   }
-  const all = (await res.json()) as StravaActivity[];
-  return all.filter((a) => a.type === "Run" || a.sport_type === "Run");
+  return (await res.json()) as StravaActivity[];
 }
 
 export async function deepBackfillRuns(years = 3): Promise<{
