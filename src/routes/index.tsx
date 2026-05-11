@@ -14,6 +14,8 @@ import { toast } from "sonner";
 import { WeatherStrip } from "@/components/WeatherStrip";
 import { CoachPlanCard } from "@/components/CoachPlanCard";
 import { BenchmarkCard } from "@/components/BenchmarkCard";
+import { TrainingLoadCard } from "@/components/TrainingLoadCard";
+import { DailyBriefingCard } from "@/components/DailyBriefingCard";
 import { Settings as SettingsIcon } from "lucide-react";
 import logoUrl from "@/assets/pirrecoachen-logo.png";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
