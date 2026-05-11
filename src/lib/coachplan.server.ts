@@ -257,6 +257,7 @@ Returnera kommentar (analys av senaste 7 dagar + hur planen anpassas) + 14 pass 
       acwr_zone: zone,
       plan: parsed.plan as never,
       computed_at,
+      based_on_run: (based_on_run ?? null) as never,
     },
     { onConflict: "id" },
   );
@@ -267,5 +268,6 @@ Returnera kommentar (analys av senaste 7 dagar + hur planen anpassas) + 14 pass 
     acwr_zone: zone,
     plan: parsed.plan,
     computed_at,
+    based_on_run,
   };
 }
