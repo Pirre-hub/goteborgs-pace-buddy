@@ -168,6 +168,7 @@ function Dashboard() {
   const fetchRuns = useServerFn(stravaGetRuns);
   const disconnectFn = useServerFn(stravaDisconnect);
   const fetchGoal = useServerFn(getActiveGoal);
+  const refreshFn = useServerFn(refreshCoachPlan);
 
   const conn = useQuery({
     queryKey: ["strava-connected"],
