@@ -385,39 +385,94 @@ function Dashboard() {
               </CardContent>
             </Card>
 
+            {(() => {
+              const weekStart = startOfWeek(new Date(), { locale: sv });
+              const thisWeek = activities.filter(
+                (a) => parseISO(a.start_date_local) >= weekStart,
+              );
+              const runsW = thisWeek.filter((a) => activityCategory(a.type) === "running");
+              const strengthW = thisWeek.filter((a) => activityCategory(a.type) === "strength");
+              const walkW = thisWeek.filter((a) => activityCategory(a.type) === "walking");
+              const runKm = runsW.reduce((s, a) => s + a.distance, 0) / 1000;
+              const walkKm = walkW.reduce((s, a) => s + a.distance, 0) / 1000;
+              return (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Veckans träning</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="rounded-lg border p-3">
+                        <div className="text-xs text-muted-foreground">🏃 Löpning</div>
+                        <div className="text-2xl font-semibold tabular-nums">
+                          {runKm.toFixed(1)} km
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {runsW.length} pass
+                        </div>
+                      </div>
+                      <div className="rounded-lg border p-3">
+                        <div className="text-xs text-muted-foreground">💪 Styrka</div>
+                        <div className="text-2xl font-semibold tabular-nums">
+                          {strengthW.length}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">pass</div>
+                      </div>
+                      <div className="rounded-lg border p-3">
+                        <div className="text-xs text-muted-foreground">🚶 Gång</div>
+                        <div className="text-2xl font-semibold tabular-nums">
+                          {walkKm.toFixed(1)} km
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {walkW.length} pass
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })()}
+
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Senaste 10 pass</CardTitle>
+                <CardTitle className="text-base">Aktivitetsöversikt – senaste 15</CardTitle>
               </CardHeader>
               <CardContent className="overflow-x-auto p-0">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Datum</TableHead>
-                      <TableHead>Namn</TableHead>
+                      <TableHead>Typ</TableHead>
                       <TableHead className="text-right">Distans</TableHead>
                       <TableHead className="text-right">Tempo</TableHead>
                       <TableHead className="text-right">Puls</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {runs.slice(0, 10).map((r) => {
-                      const pace = paceSecPerKm(r.distance, r.moving_time);
+                    {activities.slice(0, 15).map((r) => {
+                      const cat = activityCategory(r.type);
+                      const hasDistance = r.distance >= 100;
+                      const showPace = cat === "running" && hasDistance;
+                      const pace = showPace ? paceSecPerKm(r.distance, r.moving_time) : 0;
                       return (
-                        <TableRow key={r.id}>
+                        <TableRow
+                          key={r.id}
+                          style={{ borderLeft: `3px solid ${categoryBorderColor(cat)}` }}
+                        >
                           <TableCell>
                             {format(parseISO(r.start_date_local), "d MMM", {
                               locale: sv,
                             })}
                           </TableCell>
                           <TableCell className="max-w-[220px] truncate">
+                            <span className="mr-1">{activityIcon(r.type)}</span>
                             {r.name}
                           </TableCell>
                           <TableCell className="text-right tabular-nums">
-                            {(r.distance / 1000).toFixed(2)} km
+                            {hasDistance ? `${(r.distance / 1000).toFixed(2)} km` : "–"}
                           </TableCell>
                           <TableCell className="text-right tabular-nums">
-                            {formatPace(pace)}
+                            {showPace ? formatPace(pace) : "–"}
                           </TableCell>
                           <TableCell className="text-right tabular-nums">
                             {r.average_heartrate
