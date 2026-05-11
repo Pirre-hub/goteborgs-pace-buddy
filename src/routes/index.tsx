@@ -197,16 +197,18 @@ function Dashboard() {
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "strava_sync" },
-        () => {
+        async () => {
           qc.invalidateQueries({ queryKey: ["strava-runs"] });
+          await refreshFn();
           qc.invalidateQueries({ queryKey: ["coach-plan"] });
+          toast.info("Coach uppdaterad efter nytt Strava-pass");
         },
       )
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [conn.data?.connected, qc]);
+  }, [conn.data?.connected, qc, refreshFn]);
 
   const disconnectMut = useMutation({
     mutationFn: () => disconnectFn(),
