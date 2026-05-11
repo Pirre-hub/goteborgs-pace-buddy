@@ -231,7 +231,7 @@ export async function syncActivity(id: number) {
   return detail;
 }
 
-async function fetchRunsPage(
+async function fetchActivitiesPageRaw(
   perPage: number,
   page: number,
   before?: number,
@@ -250,28 +250,45 @@ async function fetchRunsPage(
     const text = await res.text();
     throw new Error(`Strava API-fel [${res.status}]: ${text}`);
   }
-  const all = (await res.json()) as StravaActivity[];
-  return all.filter((a) => a.type === "Run" || a.sport_type === "Run");
+  return (await res.json()) as StravaActivity[];
 }
 
 export async function deepBackfillRuns(years = 3): Promise<{
   synced: number;
   skipped: number;
   scanned: number;
+  scannedAll: number;
+  filteredOut: number;
+  typeCounts: Record<string, number>;
+  oldestSeen: string | null;
   done: boolean;
 }> {
   const cutoffSec = Math.floor(Date.now() / 1000) - years * 365 * 86400;
-  const MAX_SYNC_PER_CALL = 150; // stay within Worker time limits
+  const MAX_SYNC_PER_CALL = 150;
   let synced = 0;
   let skipped = 0;
   let scanned = 0;
+  let scannedAll = 0;
+  let filteredOut = 0;
+  const typeCounts: Record<string, number> = {};
+  let oldestSeen: string | null = null;
   let page = 1;
   const perPage = 100;
   let done = true;
 
   outer: while (true) {
-    const runs = await fetchRunsPage(perPage, page);
-    if (!runs.length) break;
+    const all = await fetchActivitiesPageRaw(perPage, page);
+    if (!all.length) break;
+    scannedAll += all.length;
+
+    for (const a of all) {
+      const key = a.sport_type || a.type || "Unknown";
+      typeCounts[key] = (typeCounts[key] ?? 0) + 1;
+      if (!oldestSeen || a.start_date < oldestSeen) oldestSeen = a.start_date;
+    }
+
+    const runs = all.filter((a) => a.type === "Run" || a.sport_type === "Run");
+    filteredOut += all.length - runs.length;
     scanned += runs.length;
 
     for (const r of runs) {
@@ -301,11 +318,22 @@ export async function deepBackfillRuns(years = 3): Promise<{
       }
     }
 
-    if (runs.length < perPage) break;
+    if (all.length < perPage) break;
     page++;
     if (page > 30) break;
   }
-  return { synced, skipped, scanned, done };
+  console.log("[deep-backfill]", {
+    years,
+    scannedAll,
+    scanned,
+    filteredOut,
+    synced,
+    skipped,
+    typeCounts,
+    oldestSeen,
+    done,
+  });
+  return { synced, skipped, scanned, scannedAll, filteredOut, typeCounts, oldestSeen, done };
 }
 
 export async function backfillRecentRuns(): Promise<{
