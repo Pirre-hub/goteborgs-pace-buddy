@@ -318,12 +318,56 @@ function AdvancedSection() {
 
   const webhookActive = !!syncQuery.data?.state?.subscription_id;
 
+  const lastWebhookAt = syncQuery.data?.state?.last_event_at ?? null;
+  const deepStatus: { label: string; tone: "green" | "amber" | "muted" } =
+    deepBackfillDone
+      ? { label: "Klart", tone: "green" }
+      : deepBackfillAt
+        ? { label: "Pågår", tone: "amber" }
+        : { label: "Inte startad", tone: "muted" };
+  const toneClass = {
+    green: "text-green-700 dark:text-green-400",
+    amber: "text-amber-700 dark:text-amber-400",
+    muted: "text-muted-foreground",
+  } as const;
+
   return (
     <Card className="mt-6">
       <CardHeader>
         <CardTitle>Avancerat</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
+        <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Strava-sync status
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm">
+            <div className="flex flex-col">
+              <span className="text-muted-foreground text-xs">Senaste backfill</span>
+              <span className="font-medium">
+                {backfillAt ? formatSwedishDate(backfillAt) : "Aldrig körd"}
+              </span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-muted-foreground text-xs">Full historik</span>
+              <span className={`font-medium ${toneClass[deepStatus.tone]}`}>
+                {deepStatus.label}
+                {deepBackfillAt && (
+                  <span className="text-muted-foreground font-normal text-xs ml-1">
+                    ({formatSwedishDate(deepBackfillAt)})
+                  </span>
+                )}
+              </span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-muted-foreground text-xs">Senaste live-event</span>
+              <span className="font-medium">
+                {lastWebhookAt ? formatSwedishDate(lastWebhookAt) : "Inget än"}
+              </span>
+            </div>
+          </div>
+        </div>
+
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <div className="font-medium flex items-center gap-2 flex-wrap">
