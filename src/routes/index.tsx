@@ -65,9 +65,10 @@ type Goal = {
   goal_pace_sec: number;
 };
 
-type Run = {
+type Activity = {
   id: number;
   name: string;
+  type: string; // "Run", "Walk", "WeightTraining", "Ride", etc.
   distance: number;
   moving_time: number;
   start_date: string;
@@ -75,6 +76,28 @@ type Run = {
   average_heartrate?: number;
   average_speed: number;
 };
+
+function activityCategory(type: string): "running" | "strength" | "walking" | "other" {
+  if (["Run", "TrailRun", "VirtualRun"].includes(type)) return "running";
+  if (["WeightTraining", "Workout", "CrossFit", "Yoga", "Pilates"].includes(type)) return "strength";
+  if (["Walk", "Hike"].includes(type)) return "walking";
+  return "other";
+}
+
+function activityIcon(type: string): string {
+  const cat = activityCategory(type);
+  if (cat === "running") return "🏃";
+  if (cat === "strength") return "💪";
+  if (cat === "walking") return "🚶";
+  return "🏋️";
+}
+
+function categoryBorderColor(cat: ReturnType<typeof activityCategory>): string {
+  if (cat === "running") return "#FC4C02";
+  if (cat === "strength") return "#6366f1";
+  if (cat === "walking") return "#10b981";
+  return "#9ca3af";
+}
 
 function paceSecPerKm(distanceMeters: number, movingSec: number) {
   if (distanceMeters <= 0) return 0;
