@@ -107,6 +107,84 @@ function calcACWR(
   return { acwr, acute: Math.round(acuteAvg), chronic: Math.round(chronicAvg), zone };
 }
 
+export function calcCTL_ATL_TSB(
+  runs: Array<{ start_date_local: string; distance: number; moving_time: number }>,
+  goalPaceSec: number,
+  daysHistory: number = 90,
+): {
+  ctl: number;
+  atl: number;
+  tsb: number;
+  tssToday: number;
+  trend: Array<{ date: string; ctl: number; atl: number; tsb: number }>;
+} {
+  const ft = goalPaceSec * 1.06;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const dailyTSS: Record<string, number> = {};
+  for (const r of runs) {
+    const dateKey = r.start_date_local.slice(0, 10);
+    const distKm = Number(r.distance) / 1000;
+    if (distKm < 0.5) continue;
+    const pace = Number(r.moving_time) / distKm;
+    const tss = tssFor(distKm, pace, ft);
+    dailyTSS[dateKey] = (dailyTSS[dateKey] ?? 0) + tss;
+  }
+
+  const k42 = 2 / (42 + 1);
+  const k7 = 2 / (7 + 1);
+
+  let ctl = 0;
+  let atl = 0;
+  const trend: Array<{ date: string; ctl: number; atl: number; tsb: number }> = [];
+
+  for (let i = daysHistory; i >= 0; i--) {
+    const d = new Date(today.getTime() - i * 86400000);
+    const key = d.toISOString().slice(0, 10);
+    const tss = dailyTSS[key] ?? 0;
+    ctl = ctl + k42 * (tss - ctl);
+    atl = atl + k7 * (tss - atl);
+    trend.push({
+      date: key,
+      ctl: +ctl.toFixed(1),
+      atl: +atl.toFixed(1),
+      tsb: +(ctl - atl).toFixed(1),
+    });
+  }
+
+  const tssToday = dailyTSS[today.toISOString().slice(0, 10)] ?? 0;
+  return {
+    ctl: +ctl.toFixed(1),
+    atl: +atl.toFixed(1),
+    tsb: +(ctl - atl).toFixed(1),
+    tssToday,
+    trend,
+  };
+}
+
+export async function getTrainingLoadData() {
+  const [{ data: acts }, { data: goal }] = await Promise.all([
+    supabaseAdmin
+      .from("strava_activities")
+      .select("start_date_local, distance, moving_time")
+      .order("start_date_local", { ascending: false })
+      .limit(500),
+    supabaseAdmin
+      .from("race_goal")
+      .select("goal_pace_sec")
+      .eq("is_active", true)
+      .maybeSingle(),
+  ]);
+  const goalPace = goal?.goal_pace_sec ?? 360;
+  const runs = (acts ?? []).map((r) => ({
+    start_date_local: String(r.start_date_local),
+    distance: Number(r.distance),
+    moving_time: Number(r.moving_time),
+  }));
+  return calcCTL_ATL_TSB(runs, goalPace);
+}
+
 const WEEKDAYS = ["Sön", "Mån", "Tis", "Ons", "Tor", "Fre", "Lör"];
 
 export async function getCachedPlan(): Promise<CoachPlan | null> {
