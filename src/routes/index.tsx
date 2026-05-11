@@ -238,7 +238,8 @@ function Dashboard() {
     onSuccess: () => window.location.reload(),
   });
 
-  const runs: Run[] = runsQuery.data?.runs ?? [];
+  const activities: Activity[] = runsQuery.data?.runs ?? [];
+  const runs = activities;
   const stats = useMemo(
     () => (runs.length && goal ? computeStats(runs) : null),
     [runs, goal],
