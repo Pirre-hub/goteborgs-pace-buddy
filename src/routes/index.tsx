@@ -482,41 +482,45 @@ function formatPaceShort(secPerKm: number) {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-function computeStats(runs: Run[]) {
+function computeStats(activities: Activity[]) {
   const now = new Date();
   const fourWeeksAgo = subWeeks(now, 4);
 
-  const last = runs[0];
-  const longest = runs.reduce(
+  const last = activities[0];
+  const longest = activities.reduce(
     (a, r) => (r.distance > a.distance ? r : a),
-    runs[0],
+    activities[0],
   );
 
-  const recent = runs.filter(
+  const recent = activities.filter(
     (r) => parseISO(r.start_date) >= fourWeeksAgo,
   );
+  const recentRuns = recent.filter((r) => activityCategory(r.type) === "running");
 
   const total4w =
-    recent.reduce((sum, r) => sum + r.distance, 0) / 1000;
+    recentRuns.reduce((sum, r) => sum + r.distance, 0) / 1000;
 
-  const totalSec = recent.reduce((s, r) => s + r.moving_time, 0);
-  const totalDist = recent.reduce((s, r) => s + r.distance, 0);
+  const totalSec = recentRuns.reduce((s, r) => s + r.moving_time, 0);
+  const totalDist = recentRuns.reduce((s, r) => s + r.distance, 0);
   const avgPace4w = totalDist > 0 ? totalSec / (totalDist / 1000) : 0;
 
-  const hrRuns = recent.filter((r) => !!r.average_heartrate);
+  const hrRuns = recentRuns.filter((r) => !!r.average_heartrate);
   const avgHr4w =
     hrRuns.length > 0
       ? hrRuns.reduce((s, r) => s + (r.average_heartrate ?? 0), 0) /
         hrRuns.length
       : 0;
 
-  // Chart: oldest left, newest right
-  const ordered = [...runs].reverse();
-  const chartData = ordered.map((r) => ({
-    dateLabel: format(parseISO(r.start_date_local), "d MMM", { locale: sv }),
-    paceSec: paceSecPerKm(r.distance, r.moving_time),
-    distanceKm: +(r.distance / 1000).toFixed(2),
-  }));
+  // Chart: oldest left, newest right — running only
+  const ordered = [...activities].reverse();
+  const chartData = ordered
+    .filter((r) => activityCategory(r.type) === "running")
+    .slice(-30)
+    .map((r) => ({
+      dateLabel: format(parseISO(r.start_date_local), "d MMM", { locale: sv }),
+      paceSec: paceSecPerKm(r.distance, r.moving_time),
+      distanceKm: +(r.distance / 1000).toFixed(2),
+    }));
 
   return {
     last: {
