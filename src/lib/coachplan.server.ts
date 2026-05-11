@@ -110,7 +110,7 @@ function calcACWR(
 export function calcCTL_ATL_TSB(
   runs: Array<{ start_date_local: string; distance: number; moving_time: number }>,
   goalPaceSec: number,
-  daysHistory: number = 90,
+  daysHistory: number = 365,
 ): {
   ctl: number;
   atl: number;
@@ -169,7 +169,7 @@ export async function getTrainingLoadData() {
       .from("strava_activities")
       .select("start_date_local, distance, moving_time")
       .order("start_date_local", { ascending: false })
-      .limit(500),
+      .limit(2000),
     supabaseAdmin
       .from("race_goal")
       .select("goal_pace_sec")
