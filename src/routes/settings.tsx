@@ -7,14 +7,16 @@ import {
   stravaBackfill,
   stravaDeepBackfill,
   stravaRegisterWebhook,
+  stravaGetSyncState,
 } from "@/lib/strava.functions";
 import { getVapidKey, subscribePush } from "@/lib/push.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { ArrowLeft, Bell, RefreshCw, Webhook } from "lucide-react";
+import { ArrowLeft, Bell, CheckCircle2, RefreshCw, Webhook } from "lucide-react";
 
 export const Route = createFileRoute("/settings")({
   component: SettingsPage,
