@@ -38,7 +38,7 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
-import { format, parseISO, differenceInDays, subWeeks } from "date-fns";
+import { format, parseISO, differenceInDays, subWeeks, startOfWeek } from "date-fns";
 import { sv } from "date-fns/locale";
 
 export const Route = createFileRoute("/")({
