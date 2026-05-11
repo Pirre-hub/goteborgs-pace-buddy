@@ -8,7 +8,9 @@ import {
   stravaDisconnect,
 } from "@/lib/strava.functions";
 import { getActiveGoal } from "@/lib/goal.functions";
+import { refreshCoachPlan } from "@/lib/coachplan.functions";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { WeatherStrip } from "@/components/WeatherStrip";
 import { CoachPlanCard } from "@/components/CoachPlanCard";
 import { BenchmarkCard } from "@/components/BenchmarkCard";
