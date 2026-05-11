@@ -54,7 +54,7 @@ export function TrainingLoadCard() {
   if (!q.data) return null;
 
   const { ctl, atl, tsb, trend } = q.data;
-  const last60 = trend.slice(-60).map((p) => ({
+  const last60 = trend.map((p) => ({
     ...p,
     label: format(parseISO(p.date), "d MMM", { locale: sv }),
   }));
