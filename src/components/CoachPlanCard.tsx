@@ -125,6 +125,33 @@ export function CoachPlanCard() {
               </div>
             )}
 
+            {plan.based_on_run && (
+              <div className="text-xs text-muted-foreground -mt-3">
+                Baserat på:{" "}
+                {(() => {
+                  const d = new Date(plan.based_on_run.date);
+                  const day = d.getDate();
+                  const months = [
+                    "jan",
+                    "feb",
+                    "mar",
+                    "apr",
+                    "maj",
+                    "jun",
+                    "jul",
+                    "aug",
+                    "sep",
+                    "okt",
+                    "nov",
+                    "dec",
+                  ];
+                  return `${day} ${months[d.getMonth()]}`;
+                })()}{" "}
+                • {plan.based_on_run.distance_km} km •{" "}
+                {plan.based_on_run.pace}
+              </div>
+            )}
+
             <p className="text-sm leading-relaxed">{plan.commentary}</p>
 
             {/* First 7 days as boxes */}
