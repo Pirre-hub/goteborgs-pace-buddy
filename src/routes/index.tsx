@@ -38,7 +38,7 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
-import { format, parseISO, differenceInDays, subWeeks } from "date-fns";
+import { format, parseISO, differenceInDays, subWeeks, startOfWeek } from "date-fns";
 import { sv } from "date-fns/locale";
 
 export const Route = createFileRoute("/")({
@@ -65,9 +65,10 @@ type Goal = {
   goal_pace_sec: number;
 };
 
-type Run = {
+type Activity = {
   id: number;
   name: string;
+  type: string; // "Run", "Walk", "WeightTraining", "Ride", etc.
   distance: number;
   moving_time: number;
   start_date: string;
@@ -75,6 +76,28 @@ type Run = {
   average_heartrate?: number;
   average_speed: number;
 };
+
+function activityCategory(type: string): "running" | "strength" | "walking" | "other" {
+  if (["Run", "TrailRun", "VirtualRun"].includes(type)) return "running";
+  if (["WeightTraining", "Workout", "CrossFit", "Yoga", "Pilates"].includes(type)) return "strength";
+  if (["Walk", "Hike"].includes(type)) return "walking";
+  return "other";
+}
+
+function activityIcon(type: string): string {
+  const cat = activityCategory(type);
+  if (cat === "running") return "🏃";
+  if (cat === "strength") return "💪";
+  if (cat === "walking") return "🚶";
+  return "🏋️";
+}
+
+function categoryBorderColor(cat: ReturnType<typeof activityCategory>): string {
+  if (cat === "running") return "#FC4C02";
+  if (cat === "strength") return "#6366f1";
+  if (cat === "walking") return "#10b981";
+  return "#9ca3af";
+}
 
 function paceSecPerKm(distanceMeters: number, movingSec: number) {
   if (distanceMeters <= 0) return 0;
@@ -215,7 +238,8 @@ function Dashboard() {
     onSuccess: () => window.location.reload(),
   });
 
-  const runs: Run[] = runsQuery.data?.runs ?? [];
+  const activities: Activity[] = runsQuery.data?.runs ?? [];
+  const runs = activities;
   const stats = useMemo(
     () => (runs.length && goal ? computeStats(runs) : null),
     [runs, goal],
@@ -361,39 +385,94 @@ function Dashboard() {
               </CardContent>
             </Card>
 
+            {(() => {
+              const weekStart = startOfWeek(new Date(), { locale: sv });
+              const thisWeek = activities.filter(
+                (a) => parseISO(a.start_date_local) >= weekStart,
+              );
+              const runsW = thisWeek.filter((a) => activityCategory(a.type) === "running");
+              const strengthW = thisWeek.filter((a) => activityCategory(a.type) === "strength");
+              const walkW = thisWeek.filter((a) => activityCategory(a.type) === "walking");
+              const runKm = runsW.reduce((s, a) => s + a.distance, 0) / 1000;
+              const walkKm = walkW.reduce((s, a) => s + a.distance, 0) / 1000;
+              return (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Veckans träning</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="rounded-lg border p-3">
+                        <div className="text-xs text-muted-foreground">🏃 Löpning</div>
+                        <div className="text-2xl font-semibold tabular-nums">
+                          {runKm.toFixed(1)} km
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {runsW.length} pass
+                        </div>
+                      </div>
+                      <div className="rounded-lg border p-3">
+                        <div className="text-xs text-muted-foreground">💪 Styrka</div>
+                        <div className="text-2xl font-semibold tabular-nums">
+                          {strengthW.length}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">pass</div>
+                      </div>
+                      <div className="rounded-lg border p-3">
+                        <div className="text-xs text-muted-foreground">🚶 Gång</div>
+                        <div className="text-2xl font-semibold tabular-nums">
+                          {walkKm.toFixed(1)} km
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {walkW.length} pass
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })()}
+
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Senaste 10 pass</CardTitle>
+                <CardTitle className="text-base">Aktivitetsöversikt – senaste 15</CardTitle>
               </CardHeader>
               <CardContent className="overflow-x-auto p-0">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Datum</TableHead>
-                      <TableHead>Namn</TableHead>
+                      <TableHead>Typ</TableHead>
                       <TableHead className="text-right">Distans</TableHead>
                       <TableHead className="text-right">Tempo</TableHead>
                       <TableHead className="text-right">Puls</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {runs.slice(0, 10).map((r) => {
-                      const pace = paceSecPerKm(r.distance, r.moving_time);
+                    {activities.slice(0, 15).map((r) => {
+                      const cat = activityCategory(r.type);
+                      const hasDistance = r.distance >= 100;
+                      const showPace = cat === "running" && hasDistance;
+                      const pace = showPace ? paceSecPerKm(r.distance, r.moving_time) : 0;
                       return (
-                        <TableRow key={r.id}>
+                        <TableRow
+                          key={r.id}
+                          style={{ borderLeft: `3px solid ${categoryBorderColor(cat)}` }}
+                        >
                           <TableCell>
                             {format(parseISO(r.start_date_local), "d MMM", {
                               locale: sv,
                             })}
                           </TableCell>
                           <TableCell className="max-w-[220px] truncate">
+                            <span className="mr-1">{activityIcon(r.type)}</span>
                             {r.name}
                           </TableCell>
                           <TableCell className="text-right tabular-nums">
-                            {(r.distance / 1000).toFixed(2)} km
+                            {hasDistance ? `${(r.distance / 1000).toFixed(2)} km` : "–"}
                           </TableCell>
                           <TableCell className="text-right tabular-nums">
-                            {formatPace(pace)}
+                            {showPace ? formatPace(pace) : "–"}
                           </TableCell>
                           <TableCell className="text-right tabular-nums">
                             {r.average_heartrate
@@ -458,41 +537,45 @@ function formatPaceShort(secPerKm: number) {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-function computeStats(runs: Run[]) {
+function computeStats(activities: Activity[]) {
   const now = new Date();
   const fourWeeksAgo = subWeeks(now, 4);
 
-  const last = runs[0];
-  const longest = runs.reduce(
+  const last = activities[0];
+  const longest = activities.reduce(
     (a, r) => (r.distance > a.distance ? r : a),
-    runs[0],
+    activities[0],
   );
 
-  const recent = runs.filter(
+  const recent = activities.filter(
     (r) => parseISO(r.start_date) >= fourWeeksAgo,
   );
+  const recentRuns = recent.filter((r) => activityCategory(r.type) === "running");
 
   const total4w =
-    recent.reduce((sum, r) => sum + r.distance, 0) / 1000;
+    recentRuns.reduce((sum, r) => sum + r.distance, 0) / 1000;
 
-  const totalSec = recent.reduce((s, r) => s + r.moving_time, 0);
-  const totalDist = recent.reduce((s, r) => s + r.distance, 0);
+  const totalSec = recentRuns.reduce((s, r) => s + r.moving_time, 0);
+  const totalDist = recentRuns.reduce((s, r) => s + r.distance, 0);
   const avgPace4w = totalDist > 0 ? totalSec / (totalDist / 1000) : 0;
 
-  const hrRuns = recent.filter((r) => !!r.average_heartrate);
+  const hrRuns = recentRuns.filter((r) => !!r.average_heartrate);
   const avgHr4w =
     hrRuns.length > 0
       ? hrRuns.reduce((s, r) => s + (r.average_heartrate ?? 0), 0) /
         hrRuns.length
       : 0;
 
-  // Chart: oldest left, newest right
-  const ordered = [...runs].reverse();
-  const chartData = ordered.map((r) => ({
-    dateLabel: format(parseISO(r.start_date_local), "d MMM", { locale: sv }),
-    paceSec: paceSecPerKm(r.distance, r.moving_time),
-    distanceKm: +(r.distance / 1000).toFixed(2),
-  }));
+  // Chart: oldest left, newest right — running only
+  const ordered = [...activities].reverse();
+  const chartData = ordered
+    .filter((r) => activityCategory(r.type) === "running")
+    .slice(-30)
+    .map((r) => ({
+      dateLabel: format(parseISO(r.start_date_local), "d MMM", { locale: sv }),
+      paceSec: paceSecPerKm(r.distance, r.moving_time),
+      distanceKm: +(r.distance / 1000).toFixed(2),
+    }));
 
   return {
     last: {
