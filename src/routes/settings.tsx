@@ -341,7 +341,7 @@ function AdvancedSection() {
           <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Strava-sync status
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
             <div className="flex flex-col">
               <span className="text-muted-foreground text-xs">Senaste backfill</span>
               <span className="font-medium">
@@ -363,6 +363,14 @@ function AdvancedSection() {
               <span className="text-muted-foreground text-xs">Senaste live-event</span>
               <span className="font-medium">
                 {lastWebhookAt ? formatSwedishDate(lastWebhookAt) : "Inget än"}
+              </span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-muted-foreground text-xs">Morgon-notiser</span>
+              <span
+                className={`font-medium ${pushActive ? toneClass.green : toneClass.muted}`}
+              >
+                {pushActive ? "Aktiverade" : "Inte aktiverade"}
               </span>
             </div>
           </div>
