@@ -112,7 +112,7 @@ const WEEKDAYS = ["Sön", "Mån", "Tis", "Ons", "Tor", "Fre", "Lör"];
 export async function getCachedPlan(): Promise<CoachPlan | null> {
   const { data } = await supabaseAdmin
     .from("coach_plan")
-    .select("commentary, acwr, acwr_zone, plan, computed_at")
+    .select("commentary, acwr, acwr_zone, plan, computed_at, based_on_run")
     .eq("id", 1)
     .maybeSingle();
   if (!data) return null;
@@ -122,6 +122,8 @@ export async function getCachedPlan(): Promise<CoachPlan | null> {
     acwr_zone: (data.acwr_zone as CoachPlan["acwr_zone"]) ?? null,
     plan: (data.plan as PlanDay[]) ?? [],
     computed_at: data.computed_at,
+    based_on_run:
+      (data.based_on_run as CoachPlan["based_on_run"]) ?? undefined,
   };
 }
 
