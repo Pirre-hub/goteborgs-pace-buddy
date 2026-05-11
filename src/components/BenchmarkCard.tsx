@@ -83,7 +83,14 @@ export function BenchmarkCard({ runs: _fallback }: { runs: Run[] }) {
           const nextSentence = atTop
             ? "Du är i världseliten."
             : `Bättre än de flesta aktiva motionslöpare i din åldersgrupp. Nästa nivå: ${nextLabel} vid ${nextThreshold}%.`;
-          const pinLeft = Math.max(4, Math.min(p, 96));
+          // Map percent to bar position: segments are [0–50, 50–60, 60–70, 70–80, 80–90, 90–100]
+          // Each segment is 1/6 of bar width regardless of value range.
+          const segWidth = 100 / 6;
+          let posPct: number;
+          if (p < 50) posPct = (p / 50) * segWidth;
+          else if (p >= 90) posPct = 5 * segWidth + Math.min((p - 90) / 10, 1) * segWidth;
+          else posPct = segWidth + ((p - 50) / 10) * segWidth;
+          const pinLeft = Math.max(2, Math.min(posPct, 98));
 
           return (
             <div className="space-y-5">
