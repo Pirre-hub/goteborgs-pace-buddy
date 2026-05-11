@@ -315,11 +315,15 @@ function Dashboard() {
 
         {runs.length > 0 && stats && (
           <>
+            <DailyBriefingCard />
+
             <WeatherStrip />
 
             <CoachPlanCard />
 
             <BenchmarkCard runs={runs} />
+
+            <TrainingLoadCard />
 
             <Card>
               <CardHeader>
