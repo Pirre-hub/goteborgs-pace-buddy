@@ -60,42 +60,126 @@ export function BenchmarkCard({ runs: _fallback }: { runs: Run[] }) {
       <CardContent>
         {!ag || !best ? (
           <p className="text-sm text-muted-foreground">
-            Behöver fler pass i Strava-historiken.
+            Behöver fler löppass i Strava-historiken för att beräkna åldersgradering.
           </p>
-        ) : (
-          <div className="rounded-lg border bg-card p-5 space-y-4">
-            <div className="text-center">
-              <div className={`text-5xl font-semibold tabular-nums ${colors.text}`}>
-                {ag.percent.toFixed(1)}%
-              </div>
-              <div className={`mt-1 text-sm font-medium ${colors.text}`}>
-                {ag.tier}
-              </div>
-              <div className="mt-1 text-xs text-muted-foreground">
-                Ålderskorrigerad halvmaraton, {PROFILE.age} år
-              </div>
-            </div>
+        ) : (() => {
+          const segments = [
+            { label: "Under 50", bg: "bg-purple-200/60", tier: "Average" },
+            { label: "50–60", bg: "bg-amber-200/60", tier: "Above avg" },
+            { label: "60–70", bg: "bg-emerald-200/60", tier: "Local" },
+            { label: "70–80", bg: "bg-lime-200/60", tier: "Regional" },
+            { label: "80–90", bg: "bg-sky-200/60", tier: "National" },
+            { label: "90+", bg: "bg-pink-200/60", tier: "World" },
+          ];
+          const p = ag.percent;
+          let nextLabel = "";
+          let nextThreshold = 0;
+          if (p < 50) { nextLabel = "Above average"; nextThreshold = 50; }
+          else if (p < 60) { nextLabel = "Local class"; nextThreshold = 60; }
+          else if (p < 70) { nextLabel = "Regional class"; nextThreshold = 70; }
+          else if (p < 80) { nextLabel = "National class"; nextThreshold = 80; }
+          else if (p < 90) { nextLabel = "World class"; nextThreshold = 90; }
+          const atTop = p >= 90;
+          const nextSentence = atTop
+            ? "Du är i världseliten."
+            : `Bättre än de flesta aktiva motionslöpare i din åldersgrupp. Nästa nivå: ${nextLabel} vid ${nextThreshold}%.`;
+          const pinLeft = Math.min(p, 99);
 
-            <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full transition-all"
-                style={{ width: `${widthPct}%`, background: colors.bar }}
-              />
-            </div>
+          return (
+            <div className="space-y-5">
+              {/* Runner track */}
+              <div className="pt-12 pb-1">
+                <div className="relative">
+                  {/* Pin */}
+                  <div
+                    className="absolute -top-12 flex flex-col items-center"
+                    style={{ left: `${pinLeft}%`, transform: "translateX(-50%)" }}
+                  >
+                    <div className="rounded-md bg-strava px-2 py-0.5 text-[11px] font-medium text-white whitespace-nowrap shadow">
+                      Pirren · {p.toFixed(1)}%
+                    </div>
+                    <div className="h-1 w-px bg-strava" />
+                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-strava text-white shadow">
+                      <Footprints className="h-4 w-4" />
+                    </div>
+                  </div>
 
-            <div className="text-xs text-muted-foreground text-center">
-              Motsvarar ~{formatTime(ag.ageGradedTimeSec)} öppet lopp för en 25-åring
-            </div>
+                  {/* Segmented bar */}
+                  <div className="flex h-7 w-full overflow-hidden rounded-md border">
+                    {segments.map((s) => (
+                      <div
+                        key={s.label}
+                        className={`flex-1 ${s.bg} flex items-center justify-center text-[10px] font-medium text-foreground/70 border-r last:border-r-0`}
+                      >
+                        {s.label}
+                      </div>
+                    ))}
+                  </div>
 
-            <div className="text-xs text-muted-foreground text-center">
-              Baserat på bästa snitt{" "}
-              {`${Math.floor(best.pace / 60)}:${Math.round(best.pace % 60)
-                .toString()
-                .padStart(2, "0")}`}
-              /km ({best.sampleSize} pass, ~{best.distance_km.toFixed(1)} km)
+                  {/* Tier labels */}
+                  <div className="mt-1 flex w-full">
+                    {segments.map((s) => (
+                      <div
+                        key={s.tier}
+                        className="flex-1 text-center text-[10px] text-muted-foreground"
+                      >
+                        {s.tier}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Main row */}
+              <div className="flex items-center gap-4 rounded-lg bg-muted/60 p-4">
+                <div className="text-strava font-semibold tabular-nums leading-none" style={{ fontSize: "56px" }}>
+                  {p.toFixed(1)}%
+                </div>
+                <div className="flex-1">
+                  <div className="font-bold">{ag.tier}</div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    {nextSentence}
+                  </div>
+                </div>
+              </div>
+
+              {/* Fact row */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-lg bg-muted/60 p-3">
+                  <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                    Öppet lopp (25-åring)
+                  </div>
+                  <div className="mt-1 text-lg font-semibold tabular-nums">
+                    {formatTime(ag.ageGradedTimeSec)}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">
+                    Din ålderskorrigerade tid
+                  </div>
+                </div>
+                <div className="rounded-lg bg-muted/60 p-3">
+                  <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                    Till nästa nivå
+                  </div>
+                  {atTop ? (
+                    <>
+                      <div className="mt-1 text-lg font-semibold">Världselit uppnådd</div>
+                      <div className="text-[11px] text-muted-foreground">90%+</div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="mt-1 text-lg font-semibold tabular-nums">
+                        {(nextThreshold - p).toFixed(1)}%
+                      </div>
+                      <div className="text-[11px] text-muted-foreground">
+                        {nextLabel} vid {nextThreshold}%
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
       </CardContent>
     </Card>
   );
