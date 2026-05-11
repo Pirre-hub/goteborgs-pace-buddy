@@ -178,6 +178,20 @@ export async function generatePlan(): Promise<CoachPlan> {
     )
     .join("\n");
 
+  const latestRun = runs[0] ?? null;
+  const based_on_run = latestRun
+    ? {
+        date: latestRun.start_date_local.slice(0, 10),
+        distance_km: +(latestRun.distance / 1000).toFixed(1),
+        pace: (() => {
+          const s = latestRun.moving_time / (latestRun.distance / 1000);
+          return `${Math.floor(s / 60)}:${Math.round(s % 60)
+            .toString()
+            .padStart(2, "0")}/km`;
+        })(),
+      }
+    : undefined;
+
   const goalLine = goal
     ? `Mål: ${goal.name} ${goal.distance_km} km @ ${Math.floor(goalPace / 60)}:${(goalPace % 60).toString().padStart(2, "0")}/km, ${Math.max(0, Math.round((new Date(goal.race_date).getTime() - Date.now()) / 86400000))} dagar kvar.`
     : "Inget mål satt.";
