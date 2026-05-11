@@ -83,7 +83,7 @@ export function BenchmarkCard({ runs: _fallback }: { runs: Run[] }) {
           const nextSentence = atTop
             ? "Du är i världseliten."
             : `Bättre än de flesta aktiva motionslöpare i din åldersgrupp. Nästa nivå: ${nextLabel} vid ${nextThreshold}%.`;
-          const pinLeft = Math.min(p, 99);
+          const pinLeft = Math.max(4, Math.min(p, 96));
 
           return (
             <div className="space-y-5">
@@ -95,7 +95,7 @@ export function BenchmarkCard({ runs: _fallback }: { runs: Run[] }) {
                     className="absolute -top-12 flex flex-col items-center"
                     style={{ left: `${pinLeft}%`, transform: "translateX(-50%)" }}
                   >
-                    <div className="rounded-md bg-strava px-2 py-0.5 text-[11px] font-medium text-white whitespace-nowrap shadow">
+                    <div className="max-w-[40vw] truncate rounded-md bg-strava px-2 py-0.5 text-[11px] font-medium text-white whitespace-nowrap shadow">
                       Pirren · {p.toFixed(1)}%
                     </div>
                     <div className="h-1 w-px bg-strava" />
