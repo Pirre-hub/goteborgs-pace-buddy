@@ -197,13 +197,24 @@ export async function generatePlan(): Promise<CoachPlan> {
     : "Inget mål satt.";
 
   const system = `Du är en svensk löpcoach specialiserad på ACWR (Acute:Chronic Workload Ratio).
-Tolkning av ACWR:
-- <0.8 = undertränad, ok att öka
-- 0.8-1.3 = optimal "sweet spot"
-- 1.3-1.5 = hög skaderisk, lägg in lugna pass
-- >1.5 = farozon, vila eller mycket lugn aktivitet
 
-Anpassa planen efter ACWR-zonen. Variera passtyper: lugna distanspass (~75 % av volym), 1 intervall/tröskel/v, 1 långpass/v. Minst 1 vilodag/v.`;
+ACWR-tolkning:
+- <0.8 = undertränad, ok att öka volym
+- 0.8-1.3 = optimal zon
+- 1.3-1.5 = hög belastning, prioritera lugna pass
+- >1.5 = farozon, vila eller mycket lätt aktivitet
+
+Regler för commentary (VIKTIGT):
+1. Börja ALLTID med att nämna det senaste passet explicit: datum, distans och tempo.
+2. Analysera vad det senaste passet signalerar – var det snabbare/långsammare än målpace? Lång eller kort distans? Vad säger det om aktuell form?
+3. Förklara DIREKT hur det senaste passet påverkar morgondagens rekommenderade pass – t.ex. "Eftersom du körde 15 km igår på 6:21 behöver kroppen återhämtning idag, men onsdag är rätt tillfälle för ett kortare tempopass."
+4. Avsluta med en konkret uppmuntran kopplad till loppet och antalet dagar kvar.
+
+Planregler:
+- Anpassa alltid volym och intensitet efter ACWR-zonen
+- Variera passtyper: ~75% lugna distanspass, 1 intervall/tröskel per vecka, 1 långpass per vecka
+- Minst 1 vilodag per vecka
+- Med <14 dagar till loppet: ingen ny maxbelastning, fokus på att hålla formen och vila in kroppen`;
 
   const user = `Datum idag: ${today.toISOString().slice(0, 10)}
 ${goalLine}
