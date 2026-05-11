@@ -1,22 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Trophy } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
-import { stravaListCached } from "@/lib/strava.functions";
-import {
-  PROFILE,
-  bestRecentPaceSecPerKm,
-  calcVDOT,
-  estimateCooper12min,
-  estimateHRmax,
-  estimateVO2maxFromHR,
-  lowestEasyHR,
-  vdotBench,
-  cooperBench,
-  vo2Bench,
-  hrBench,
-  type Bench,
-} from "@/lib/benchmarks";
+import { PROFILE, calcAgeGrade } from "@/lib/benchmarks";
 
 type Run = {
   distance: number;
@@ -25,72 +9,33 @@ type Run = {
   average_heartrate?: number | null;
 };
 
-const TONE_CLASS: Record<Bench["tone"], string> = {
-  excellent: "text-emerald-500",
+const TONE_TEXT: Record<"excellent" | "good" | "average" | "below", string> = {
+  excellent: "text-strava",
   good: "text-emerald-500",
   average: "text-amber-500",
   below: "text-muted-foreground",
 };
 
-function Tile({
-  label,
-  bench,
-  hint,
-}: {
-  label: string;
-  bench: Bench | null;
-  hint?: string;
-}) {
-  if (!bench)
-    return (
-      <div className="rounded-lg border bg-card p-4">
-        <div className="text-xs uppercase tracking-wide text-muted-foreground">
-          {label}
-        </div>
-        <div className="mt-2 text-base text-muted-foreground">
-          Behöver mer data
-        </div>
-      </div>
-    );
-  return (
-    <div className="rounded-lg border bg-card p-4">
-      <div className="text-xs uppercase tracking-wide text-muted-foreground">
-        {label}
-      </div>
-      <div className="mt-2 text-2xl font-semibold tabular-nums">
-        {bench.label}
-      </div>
-      <div className={`text-xs font-medium mt-1 ${TONE_CLASS[bench.tone]}`}>
-        {bench.percentileText}
-      </div>
-      <div className="text-xs text-muted-foreground mt-1">
-        Referens: {bench.referenceLabel}
-      </div>
-      {hint && (
-        <div className="text-xs text-muted-foreground mt-1">{hint}</div>
-      )}
-    </div>
-  );
+function barColor(percent: number): string {
+  if (percent >= 70) return "bg-strava";
+  if (percent >= 60) return "bg-emerald-500";
+  if (percent >= 50) return "bg-amber-500";
+  return "bg-muted-foreground";
 }
 
-export function BenchmarkCard({ runs: _fallback }: { runs: Run[] }) {
-  const listFn = useServerFn(stravaListCached);
-  const allQuery = useQuery({
-    queryKey: ["strava-cached-all"],
-    queryFn: () => listFn({ data: { limit: 5000 } }),
-    staleTime: 5 * 60 * 1000,
-  });
-  const runs: Run[] = (allQuery.data?.activities as Run[] | undefined) ?? _fallback;
+function formatHMM(sec: number): string {
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60)
+    .toString()
+    .padStart(2, "0");
+  return `${h}:${m}`;
+}
 
-  const best = bestRecentPaceSecPerKm(runs);
-  const vdot = best
-    ? calcVDOT(best.distance_km, best.distance_km * best.pace)
-    : null;
-  const cooper = best ? estimateCooper12min(best.pace) : null;
-  const hrmin = lowestEasyHR(runs);
-  const hrmax = estimateHRmax(PROFILE.age);
-  const vo2 = hrmin ? estimateVO2maxFromHR(hrmax, hrmin) : null;
-  const sample = runs.length;
+export function BenchmarkCard({ runs: _runs }: { runs: Run[] }) {
+  const goalPaceSecPerKm = 370;
+  const finishSec = goalPaceSecPerKm * 21.1;
+  const grade = calcAgeGrade(finishSec, PROFILE.age);
+  const widthPct = Math.max(0, Math.min(100, grade.percent));
 
   return (
     <Card>
@@ -101,30 +46,25 @@ export function BenchmarkCard({ runs: _fallback }: { runs: Run[] }) {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="text-xs text-muted-foreground mb-3">
-          Baserat på {sample} pass i din Strava-historik
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <Tile
-            label="VDOT"
-            bench={vdot != null ? vdotBench(vdot) : null}
-            hint={best ? `snitt av ${best.sampleSize} bästa pass (~${best.distance_km.toFixed(1)} km)` : undefined}
-          />
-          <Tile
-            label="Cooper 12 min"
-            bench={cooper != null ? cooperBench(cooper) : null}
-            hint="estimerat från bästa tempo"
-          />
-          <Tile
-            label="VO₂max-skattning"
-            bench={vo2 != null ? vo2Bench(vo2) : null}
-            hint={hrmin ? `HR-vila ~${Math.round(hrmin)} bpm` : undefined}
-          />
-          <Tile
-            label="Lägsta puls (lugnt)"
-            bench={hrmin != null ? hrBench(hrmin) : null}
-            hint={`HR-max est. ${hrmax} bpm`}
-          />
+        <div className="rounded-lg border bg-card p-5 text-center">
+          <div className={`text-5xl font-semibold tabular-nums ${TONE_TEXT[grade.tone]}`}>
+            {grade.label}
+          </div>
+          <div className={`mt-1 text-sm font-medium ${TONE_TEXT[grade.tone]}`}>
+            {grade.tier}
+          </div>
+          <div className="mt-1 text-xs text-muted-foreground">
+            Ålderskorrigerad halvmaraton, {PROFILE.age} år
+          </div>
+          <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-muted">
+            <div
+              className={`h-full rounded-full transition-all ${barColor(grade.percent)}`}
+              style={{ width: `${widthPct}%` }}
+            />
+          </div>
+          <div className="mt-2 text-xs text-muted-foreground">
+            Motsvarar ~{formatHMM(grade.ageGradedTimeSec)} öppet lopp för en 25-åring
+          </div>
         </div>
       </CardContent>
     </Card>
