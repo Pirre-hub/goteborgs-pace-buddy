@@ -10,6 +10,9 @@ type Run = {
   moving_time: number;
   start_date_local: string;
   average_heartrate?: number | null;
+  sport_type?: string | null;
+  trainer?: boolean | null;
+  raw?: unknown;
 };
 
 function formatTime(sec: number) {
