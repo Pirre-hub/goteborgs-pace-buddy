@@ -11,9 +11,13 @@ type Run = {
   moving_time: number;
   start_date_local: string;
   average_heartrate?: number | null;
+  sport_type?: string | null;
+  trainer?: boolean | null;
+  raw?: unknown;
 };
 
 // Best pace from runs in 3–21 km range, average of top 5 fastest
+// Excludes treadmill (trainer) and virtual runs.
 export function bestRecentPaceSecPerKm(runs: Run[]): {
   pace: number;
   distance_km: number;
@@ -21,7 +25,14 @@ export function bestRecentPaceSecPerKm(runs: Run[]): {
   sampleSize: number;
 } | null {
   const candidates = runs
-    .filter((r) => r.distance >= 3000 && r.distance <= 21500)
+    .filter((r) => {
+      if (r.distance < 3000 || r.distance > 21500) return false;
+      if (r.sport_type === "VirtualRun") return false;
+      const raw = r.raw as { trainer?: boolean | number } | undefined;
+      const isTrainer = r.trainer === true || raw?.trainer === true || raw?.trainer === 1;
+      if (isTrainer) return false;
+      return true;
+    })
     .map((r) => ({
       pace: r.moving_time / (r.distance / 1000),
       distance_km: r.distance / 1000,
