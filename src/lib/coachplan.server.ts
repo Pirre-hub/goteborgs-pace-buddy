@@ -244,13 +244,25 @@ export async function generatePlan(): Promise<CoachPlan> {
 
   const { acwr, acute, chronic, zone } = calcACWR(runs, goalPace);
 
-  const today = new Date();
+  // Använd Europe/Stockholm för "idag" så AI:n inte tror att svenskt
+  // kvällspass är från igår (UTC ligger 1-2 h efter).
+  const localTodayStr = new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Europe/Stockholm",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+  const today = new Date(`${localTodayStr}T00:00:00`);
   const upcomingDates: string[] = [];
   for (let i = 0; i < 14; i++) {
     const d = new Date(today.getTime() + i * 86400000);
-    upcomingDates.push(
-      `${i}|${WEEKDAYS[d.getDay()]}|${d.toISOString().slice(0, 10)}`,
-    );
+    const dateStr = new Intl.DateTimeFormat("sv-SE", {
+      timeZone: "Europe/Stockholm",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(d);
+    upcomingDates.push(`${i}|${WEEKDAYS[d.getDay()]}|${dateStr}`);
   }
 
   const last7 = runs.slice(0, 7);
@@ -299,9 +311,22 @@ Planregler:
 - Minst 1 vilodag per vecka
 - Med <14 dagar till loppet: ingen ny maxbelastning, fokus på att hålla formen och vila in kroppen`;
 
-  const user = `Datum idag: ${today.toISOString().slice(0, 10)}
+  const latestRunRelative = based_on_run
+    ? (() => {
+        const diff = Math.round(
+          (today.getTime() - new Date(based_on_run.date).getTime()) / 86400000,
+        );
+        if (diff <= 0) return "idag";
+        if (diff === 1) return "igår";
+        return `för ${diff} dagar sedan`;
+      })()
+    : null;
+
+  const user = `Datum idag: ${localTodayStr} (${WEEKDAYS[today.getDay()]})
 ${goalLine}
 ACWR: ${acwr ?? "–"} (akut snitt ${acute} TSS/d, kronisk snitt ${chronic} TSS/d, zon: ${zone ?? "okänd"})
+
+${based_on_run ? `Senaste pass: ${based_on_run.date} (${latestRunRelative}) – ${based_on_run.distance_km} km @ ${based_on_run.pace}. Använd EXAKT denna relativa tidsangivelse ("${latestRunRelative}") när du refererar till passet i kommentaren.` : ""}
 
 Senaste 7 pass:
 ${last7Lines || "(inga pass cachade)"}
@@ -309,7 +334,7 @@ ${last7Lines || "(inga pass cachade)"}
 Kommande 14 dagar (day_offset|weekday|date – fyll i pass för varje):
 ${upcomingDates.join("\n")}
 
-Returnera kommentar (analys av senaste 7 dagar + hur planen anpassas) + 14 pass via verktyget rolling_plan. day_offset 0 = idag.`;
+Returnera kommentar (analys av senaste 7 dagar + hur planen anpassas) + 14 pass via verktyget rolling_plan. day_offset 0 = idag (${localTodayStr}).`;
 
   const res = await fetch(AI_URL, {
     method: "POST",
