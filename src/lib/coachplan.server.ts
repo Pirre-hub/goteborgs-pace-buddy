@@ -244,13 +244,25 @@ export async function generatePlan(): Promise<CoachPlan> {
 
   const { acwr, acute, chronic, zone } = calcACWR(runs, goalPace);
 
-  const today = new Date();
+  // Använd Europe/Stockholm för "idag" så AI:n inte tror att svenskt
+  // kvällspass är från igår (UTC ligger 1-2 h efter).
+  const localTodayStr = new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Europe/Stockholm",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+  const today = new Date(`${localTodayStr}T00:00:00`);
   const upcomingDates: string[] = [];
   for (let i = 0; i < 14; i++) {
     const d = new Date(today.getTime() + i * 86400000);
-    upcomingDates.push(
-      `${i}|${WEEKDAYS[d.getDay()]}|${d.toISOString().slice(0, 10)}`,
-    );
+    const dateStr = new Intl.DateTimeFormat("sv-SE", {
+      timeZone: "Europe/Stockholm",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(d);
+    upcomingDates.push(`${i}|${WEEKDAYS[d.getDay()]}|${dateStr}`);
   }
 
   const last7 = runs.slice(0, 7);
