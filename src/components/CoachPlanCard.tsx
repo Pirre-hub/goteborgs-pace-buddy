@@ -55,14 +55,15 @@ export function CoachPlanCard() {
 
   const refreshMut = useMutation({
     mutationFn: () => refreshFn(),
-    onSuccess: () => {
+    onSuccess: (data) => {
+      qc.setQueryData(["coach-plan"], data);
       qc.invalidateQueries({ queryKey: ["coach-plan"] });
       toast.success("Coach uppdaterad");
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const plan = q.data?.plan ?? refreshMut.data?.plan;
+  const plan = refreshMut.data?.plan ?? q.data?.plan;
 
   return (
     <Card className="border-strava/30">

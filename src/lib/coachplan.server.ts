@@ -1,5 +1,6 @@
 // ACWR coach + 14-day rolling plan
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { backfillRecentRuns } from "./strava.server";
 
 const AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
@@ -212,6 +213,10 @@ export async function invalidatePlan() {
 export async function generatePlan(): Promise<CoachPlan> {
   const apiKey = process.env.LOVABLE_API_KEY;
   if (!apiKey) throw new Error("LOVABLE_API_KEY saknas");
+
+  // Ensure the coach is based on the latest Strava data even if the webhook
+  // has not delivered or processed the newest activity yet.
+  await backfillRecentRuns();
 
   const [{ data: goal }, { data: acts }] = await Promise.all([
     supabaseAdmin
