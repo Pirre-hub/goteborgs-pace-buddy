@@ -166,7 +166,8 @@ export function CoachPlanCard() {
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">
-                        {d.weekday}
+                        {d.weekday} {d.date ? new Date(d.date).getDate() : ""}/
+                        {d.date ? new Date(d.date).getMonth() + 1 : ""}
                         {d.day_offset === 0 && (
                           <span className="text-strava ml-1">• Idag</span>
                         )}
@@ -222,7 +223,10 @@ export function CoachPlanCard() {
                         {plan.plan.slice(7, 14).map((d) => (
                           <TableRow key={d.day_offset}>
                             <TableCell className="font-medium">
-                              {d.weekday}
+                              {d.weekday}{" "}
+                              {d.date
+                                ? `${new Date(d.date).getDate()}/${new Date(d.date).getMonth() + 1}`
+                                : ""}
                             </TableCell>
                             <TableCell>{d.type}</TableCell>
                             <TableCell className="text-right tabular-nums">

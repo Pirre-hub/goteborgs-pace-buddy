@@ -322,8 +322,20 @@ Planregler:
       })()
     : null;
 
+  const raceDateStr = goal?.race_date ?? null;
+  const raceDayLine = raceDateStr
+    ? (() => {
+        const rd = new Date(`${raceDateStr}T00:00:00`);
+        const diff = Math.round(
+          (rd.getTime() - today.getTime()) / 86400000,
+        );
+        return `LOPPDAGEN: ${raceDateStr} (${WEEKDAYS[rd.getDay()]}), om ${diff} dagar.`;
+      })()
+    : "";
+
   const user = `Datum idag: ${localTodayStr} (${WEEKDAYS[today.getDay()]})
 ${goalLine}
+${raceDayLine}
 ACWR: ${acwr ?? "–"} (akut snitt ${acute} TSS/d, kronisk snitt ${chronic} TSS/d, zon: ${zone ?? "okänd"})
 
 ${based_on_run ? `Senaste pass: ${based_on_run.date} (${latestRunRelative}) – ${based_on_run.distance_km} km @ ${based_on_run.pace}. Använd EXAKT denna relativa tidsangivelse ("${latestRunRelative}") när du refererar till passet i kommentaren.` : ""}
@@ -331,10 +343,17 @@ ${based_on_run ? `Senaste pass: ${based_on_run.date} (${latestRunRelative}) – 
 Senaste 7 pass:
 ${last7Lines || "(inga pass cachade)"}
 
-Kommande 14 dagar (day_offset|weekday|date – fyll i pass för varje):
+Kommande 14 dagar – KOPIERA EXAKT day_offset, weekday och date från listan nedan in i planen. Avvik aldrig från dessa värden. Format: day_offset|weekday|date
 ${upcomingDates.join("\n")}
 
-Returnera kommentar (analys av senaste 7 dagar + hur planen anpassas) + 14 pass via verktyget rolling_plan. day_offset 0 = idag (${localTodayStr}).`;
+KRITISKT om kalendern:
+- day_offset 0 = idag (${localTodayStr}, ${WEEKDAYS[today.getDay()]}). Veckodagar och datum MÅSTE matcha listan ovan exakt.
+- Markera loppdagen (${raceDateStr ?? "–"}) som "Lopp: ${goal?.name ?? "Göteborgsvarvet"}" med rätt distans (${goal?.distance_km ?? 21.1} km) och målpace.
+- Dagarna direkt före loppet ska vara tapering (kort + lugnt eller vila), inte långpass.
+- Inga långpass eller hårda intervaller efter loppdagen den första veckan – lätt återhämtning.
+- Referera till pass med datum (t.ex. "onsdag 20 maj") i purpose när det är relevant.
+
+Returnera kommentar + 14 pass via verktyget rolling_plan.`;
 
   const res = await fetch(AI_URL, {
     method: "POST",
