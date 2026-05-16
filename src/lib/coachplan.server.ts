@@ -385,30 +385,29 @@ COACHREGLER – MÅSTE FÖLJAS:
       ? `IDAG REDAN GENOMFÖRT: ${todayKm.toFixed(1)} km (${todayRuns.length} pass). day_offset 0 MÅSTE markeras som "Genomfört: ${todayKm.toFixed(1)} km" (type) med distance_km=${todayKm.toFixed(1)}, target_pace="–", och purpose som bekräftar passet. Flytta planerad vila/lugnt pass till day_offset 1 (imorgon) istället, och justera resten av veckan därefter så belastningen blir balanserad.`
       : `INGA PASS IDAG ÄNNU: day_offset 0 är fortfarande planerbart.`;
 
-  const user = `Datum idag: ${localTodayStr} (${WEEKDAYS[today.getDay()]})
+  const user = `Datum idag: ${today.toISOString().slice(0, 10)}
+
 ${goalLine}
-${raceDayLine}
-ACWR: ${acwr ?? "–"} (akut snitt ${acute} TSS/d, kronisk snitt ${chronic} TSS/d, zon: ${zone ?? "okänd"})
 
-${todayLine}
+Dagar till lopp: ${Math.max(0, Math.round((new Date(goal?.race_date ?? today).getTime() - Date.now()) / 86400000))}
 
-${based_on_run ? `Senaste pass: ${based_on_run.date} (${latestRunRelative}) – ${based_on_run.distance_km} km @ ${based_on_run.pace}. Använd EXAKT denna relativa tidsangivelse ("${latestRunRelative}") när du refererar till passet i kommentaren.` : ""}
+TRÄNINGSBELASTNING:
 
-Senaste 7 pass:
-${last7Lines || "(inga pass cachade)"}
+- ACWR: ${acwr ?? "–"} (zon: ${zone ?? "okänd"})
 
-Kommande 14 dagar – KOPIERA EXAKT day_offset, weekday och date från listan nedan in i planen. Avvik aldrig från dessa värden. Format: day_offset|weekday|date
+- Akut snitt: ${acute} TSS/dag (senaste 7 dagar)
+
+- Kronisk snitt: ${chronic} TSS/dag (senaste 28 dagar)
+
+SENASTE ${last7.length} PASS (inkl tempo och pulsdata):
+
+${last7Lines || "(inga pass)"}
+
+KOMMANDE 14 DAGAR (day_offset|weekday|date):
+
 ${upcomingDates.join("\n")}
 
-KRITISKT om kalendern:
-- day_offset 0 = idag (${localTodayStr}, ${WEEKDAYS[today.getDay()]}). Veckodagar och datum MÅSTE matcha listan ovan exakt.
-- Om passet redan är genomfört idag (se ovan) ska day_offset 0 visa det genomförda passet, INTE ett nytt planerat pass eller vila.
-- Markera loppdagen (${raceDateStr ?? "–"}) som "Lopp: ${goal?.name ?? "Göteborgsvarvet"}" med rätt distans (${goal?.distance_km ?? 21.1} km) och målpace.
-- Dagarna direkt före loppet ska vara tapering (kort + lugnt eller vila), inte långpass.
-- Inga långpass eller hårda intervaller efter loppdagen den första veckan – lätt återhämtning.
-- Referera till pass med datum (t.ex. "onsdag 20 maj") i purpose när det är relevant.
-
-Returnera kommentar + 14 pass via verktyget rolling_plan.`;
+Generera commentary (3–5 meningar, börja med senaste passets datum + tempo) + 14 pass via rolling_plan. Varje purpose ska vara 2–3 meningar som förklarar VARFÖR just detta pass just denna dag, kopplat till ACWR och dagar till lopp.`;
 
   const res = await fetch(AI_URL, {
     method: "POST",
