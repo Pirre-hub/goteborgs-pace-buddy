@@ -267,10 +267,16 @@ export async function generatePlan(): Promise<CoachPlan> {
 
   const last7 = runs.slice(0, 7);
   const last7Lines = last7
-    .map(
-      (r) =>
-        `- ${r.start_date_local.slice(0, 10)}: ${(r.distance / 1000).toFixed(1)} km, ${Math.round(r.moving_time / 60)} min${r.average_heartrate ? `, puls ${Math.round(r.average_heartrate)}` : ""}`,
-    )
+    .map((r) => {
+      const distKm = r.distance / 1000;
+      const paceSec = distKm > 0 ? r.moving_time / distKm : 0;
+      const paceMin = Math.floor(paceSec / 60);
+      const paceSecs = Math.round(paceSec % 60).toString().padStart(2, "0");
+      const pace = distKm > 0.5 ? `${paceMin}:${paceSecs}/km` : "–";
+      const hr = r.average_heartrate ? `, puls ${Math.round(r.average_heartrate)}` : "";
+      const name = r.name ? ` (${r.name})` : "";
+      return `- ${r.start_date_local.slice(0, 10)}${name}: ${distKm.toFixed(1)} km @ ${pace}${hr}`;
+    })
     .join("\n");
 
   const latestRun = runs[0] ?? null;
