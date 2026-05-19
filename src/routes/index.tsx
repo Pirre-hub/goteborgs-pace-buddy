@@ -283,7 +283,7 @@ function Dashboard() {
             </div>
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
-            {goal && <Countdown raceDate={parseISO(goal.race_date)} />}
+            {goal && <Countdown raceDate={parseDateLocal(goal.race_date)} />}
             <Link to="/settings">
               <Button variant="outline" size="sm" aria-label="Inställningar">
                 <SettingsIcon className="h-4 w-4" />
