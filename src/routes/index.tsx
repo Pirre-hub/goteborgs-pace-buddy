@@ -46,6 +46,8 @@ import { sv } from "date-fns/locale";
 export const Route = createFileRoute("/")({
   component: Dashboard,
   head: () => ({
+  component: Dashboard,
+  head: () => ({
     meta: [
       { title: "Träningsdashboard" },
       {
