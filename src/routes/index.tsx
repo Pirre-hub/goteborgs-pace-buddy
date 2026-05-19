@@ -43,6 +43,11 @@ import {
 import { format, parseISO, differenceInDays, subWeeks, startOfWeek } from "date-fns";
 import { sv } from "date-fns/locale";
 
+function parseDateLocal(dateStr: string): Date {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
 export const Route = createFileRoute("/")({
   component: Dashboard,
   head: () => ({
@@ -283,7 +288,7 @@ function Dashboard() {
             </div>
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
-            {goal && <Countdown raceDate={parseISO(goal.race_date)} />}
+            {goal && <Countdown raceDate={parseDateLocal(goal.race_date)} />}
             <Link to="/settings">
               <Button variant="outline" size="sm" aria-label="Inställningar">
                 <SettingsIcon className="h-4 w-4" />
