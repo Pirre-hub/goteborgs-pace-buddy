@@ -294,7 +294,7 @@ export async function generatePlan(): Promise<CoachPlan> {
     : undefined;
 
   const goalLine = goal
-    ? `Mål: ${goal.name} ${goal.distance_km} km @ ${Math.floor(goalPace / 60)}:${(goalPace % 60).toString().padStart(2, "0")}/km, ${Math.max(0, Math.round((new Date(goal.race_date).getTime() - Date.now()) / 86400000))} dagar kvar.`
+    ? `Mål: ${goal.name} ${goal.distance_km} km @ ${Math.floor(goalPace / 60)}:${(goalPace % 60).toString().padStart(2, "0")}/km, ${Math.max(0, Math.round((new Date(goal.race_date + "T00:00:00").getTime() - Date.now()) / 86400000))} dagar kvar.`
     : "Inget mål satt.";
 
   const system = `Du är en erfaren svensk löp- och träningscoach med 20 års erfarenhet av att coacha motionslöpare 50–70 år. Du kombinerar vetenskaplig träningslära med praktisk erfarenhet.
