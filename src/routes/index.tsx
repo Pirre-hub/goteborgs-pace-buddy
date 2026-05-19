@@ -43,6 +43,11 @@ import {
 import { format, parseISO, differenceInDays, subWeeks, startOfWeek } from "date-fns";
 import { sv } from "date-fns/locale";
 
+function parseDateLocal(dateStr: string): Date {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
 export const Route = createFileRoute("/")({
   component: Dashboard,
   head: () => ({
