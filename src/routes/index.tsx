@@ -51,8 +51,6 @@ function parseDateLocal(dateStr: string): Date {
 export const Route = createFileRoute("/")({
   component: Dashboard,
   head: () => ({
-  component: Dashboard,
-  head: () => ({
     meta: [
       { title: "Träningsdashboard" },
       {
