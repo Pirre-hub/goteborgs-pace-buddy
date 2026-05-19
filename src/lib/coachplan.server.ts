@@ -389,7 +389,7 @@ COACHREGLER – MÅSTE FÖLJAS:
 
 ${goalLine}
 
-Dagar till lopp: ${Math.max(0, Math.round((new Date(goal?.race_date ?? today).getTime() - Date.now()) / 86400000))}
+Dagar till lopp: ${Math.max(0, Math.round((new Date((goal?.race_date ?? today) + "T00:00:00").getTime() - Date.now()) / 86400000))}
 
 TRÄNINGSBELASTNING:
 
