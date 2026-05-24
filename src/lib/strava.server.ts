@@ -286,8 +286,8 @@ export async function deepBackfillRuns(years = 3): Promise<{
       if (!oldestSeen || a.start_date < oldestSeen) oldestSeen = a.start_date;
     }
 
-    const runs = all.filter((a) => a.type === "Run" || a.sport_type === "Run");
-    filteredOut += all.length - runs.length;
+    const runs = all;
+    filteredOut += 0;
     scanned += runs.length;
 
     for (const r of runs) {
