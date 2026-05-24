@@ -162,8 +162,7 @@ export async function fetchRecentRuns(): Promise<StravaActivity[]> {
   }
 
   const all = (await res.json()) as StravaActivity[];
-  const runs = all.filter((a) => a.type === "Run" || a.sport_type === "Run");
-  return runs.slice(0, 30);
+  return all.slice(0, 30);
 }
 
 export type StravaActivityDetail = StravaActivity & {
