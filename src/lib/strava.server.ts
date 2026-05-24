@@ -198,7 +198,7 @@ export async function fetchActivityDetail(
 export async function syncActivity(id: number) {
   const detail = await fetchActivityDetail(id);
   if (!detail) return null;
-  if (detail.type !== "Run" && detail.sport_type !== "Run") return null;
+  // Accept all activity types (Run, Walk, Hike, WeightTraining, Workout, Ride, etc.)
 
   await supabaseAdmin.from("strava_activities").upsert({
     id: detail.id,
