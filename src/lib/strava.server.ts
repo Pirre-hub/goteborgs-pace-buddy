@@ -162,8 +162,7 @@ export async function fetchRecentRuns(): Promise<StravaActivity[]> {
   }
 
   const all = (await res.json()) as StravaActivity[];
-  const runs = all.filter((a) => a.type === "Run" || a.sport_type === "Run");
-  return runs.slice(0, 30);
+  return all.slice(0, 30);
 }
 
 export type StravaActivityDetail = StravaActivity & {
@@ -199,7 +198,7 @@ export async function fetchActivityDetail(
 export async function syncActivity(id: number) {
   const detail = await fetchActivityDetail(id);
   if (!detail) return null;
-  if (detail.type !== "Run" && detail.sport_type !== "Run") return null;
+  // Accept all activity types (Run, Walk, Hike, WeightTraining, Workout, Ride, etc.)
 
   await supabaseAdmin.from("strava_activities").upsert({
     id: detail.id,
@@ -287,8 +286,8 @@ export async function deepBackfillRuns(years = 3): Promise<{
       if (!oldestSeen || a.start_date < oldestSeen) oldestSeen = a.start_date;
     }
 
-    const runs = all.filter((a) => a.type === "Run" || a.sport_type === "Run");
-    filteredOut += all.length - runs.length;
+    const runs = all;
+    filteredOut += 0;
     scanned += runs.length;
 
     for (const r of runs) {
