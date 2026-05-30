@@ -210,6 +210,13 @@ export async function invalidatePlan() {
   await supabaseAdmin.from("coach_plan").delete().eq("id", 1);
 }
 
+function toLocalDateString(date: Date): string {
+  const y = date.getFullYear();
+  const m = (date.getMonth() + 1).toString().padStart(2, "0");
+  const d = date.getDate().toString().padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 export async function generatePlan(): Promise<CoachPlan> {
   const apiKey = process.env.LOVABLE_API_KEY;
   if (!apiKey) throw new Error("LOVABLE_API_KEY saknas");
@@ -255,14 +262,10 @@ export async function generatePlan(): Promise<CoachPlan> {
   const today = new Date(`${localTodayStr}T00:00:00`);
   const upcomingDates: string[] = [];
   for (let i = 0; i < 14; i++) {
-    const d = new Date(today.getTime() + i * 86400000);
-    const dateStr = new Intl.DateTimeFormat("sv-SE", {
-      timeZone: "Europe/Stockholm",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).format(d);
-    upcomingDates.push(`${i}|${WEEKDAYS[d.getDay()]}|${dateStr}`);
+    const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() + i);
+    upcomingDates.push(
+      `${i}|${WEEKDAYS[d.getDay()]}|${toLocalDateString(d)}`,
+    );
   }
 
   const last7 = runs.slice(0, 7);
@@ -294,7 +297,7 @@ export async function generatePlan(): Promise<CoachPlan> {
     : undefined;
 
   const goalLine = goal
-    ? `Mål: ${goal.name} ${goal.distance_km} km @ ${Math.floor(goalPace / 60)}:${(goalPace % 60).toString().padStart(2, "0")}/km, ${Math.max(0, Math.round((new Date(goal.race_date + "T00:00:00").getTime() - Date.now()) / 86400000))} dagar kvar.`
+    ? `Mål: ${goal.name} ${goal.distance_km} km @ ${Math.floor(goalPace / 60)}:${(goalPace % 60).toString().padStart(2, "0")}/km, ${Math.max(0, Math.round((new Date(goal.race_date + "T00:00:00").getTime() - today.getTime()) / 86400000))} dagar kvar.`
     : "Inget mål satt.";
 
   const system = `Du är en erfaren svensk löp- och träningscoach med 20 års erfarenhet av att coacha motionslöpare 50–70 år. Du kombinerar vetenskaplig träningslära med praktisk erfarenhet.
