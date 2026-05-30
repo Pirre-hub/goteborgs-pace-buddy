@@ -210,6 +210,13 @@ export async function invalidatePlan() {
   await supabaseAdmin.from("coach_plan").delete().eq("id", 1);
 }
 
+function toLocalDateString(date: Date): string {
+  const y = date.getFullYear();
+  const m = (date.getMonth() + 1).toString().padStart(2, "0");
+  const d = date.getDate().toString().padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 export async function generatePlan(): Promise<CoachPlan> {
   const apiKey = process.env.LOVABLE_API_KEY;
   if (!apiKey) throw new Error("LOVABLE_API_KEY saknas");
