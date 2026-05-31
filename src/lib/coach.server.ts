@@ -33,66 +33,60 @@ export type CoachAdvice = {
 };
 
 const TOOL = {
-  type: "function" as const,
-  function: {
-    name: "training_advice",
-    description:
-      "Returnera nästa pass + 7 dagars plan på svenska för en löpare som tränar mot Göteborgsvarvet.",
-    parameters: {
-      type: "object",
-      properties: {
-        summary: {
-          type: "string",
-          description:
-            "1-2 meningar om belastningen senaste veckorna och vad fokus bör vara nu.",
+  name: "training_advice",
+  description:
+    "Returnera nästa pass + 7 dagars plan på svenska för en löpare som tränar mot Göteborgsvarvet.",
+  input_schema: {
+    type: "object",
+    properties: {
+      summary: {
+        type: "string",
+        description:
+          "1-2 meningar om belastningen senaste veckorna och vad fokus bör vara nu.",
+      },
+      next_session: {
+        type: "object",
+        properties: {
+          type: {
+            type: "string",
+            description:
+              "T.ex. 'Lugnt distanspass', 'Intervaller 5x1000m', 'Tröskel', 'Långpass', 'Vila'.",
+          },
+          distance_km: { type: "number" },
+          target_pace: {
+            type: "string",
+            description: "Måltempo, t.ex. '6:30/km' eller '4:50/km på intervaller'.",
+          },
+          purpose: { type: "string", description: "Syfte med passet." },
+          why_now: {
+            type: "string",
+            description:
+              "Varför just detta pass nu, baserat på senaste pass/belastning.",
+          },
         },
-        next_session: {
+        required: ["type", "distance_km", "target_pace", "purpose", "why_now"],
+      },
+      week_plan: {
+        type: "array",
+        minItems: 7,
+        maxItems: 7,
+        items: {
           type: "object",
           properties: {
-            type: {
+            day: {
               type: "string",
-              description:
-                "T.ex. 'Lugnt distanspass', 'Intervaller 5x1000m', 'Tröskel', 'Långpass', 'Vila'.",
+              description: "Dag 1-7 från idag, t.ex. 'Mån', 'Tis'.",
             },
-            distance_km: { type: "number" },
-            target_pace: {
-              type: "string",
-              description: "Måltempo, t.ex. '6:30/km' eller '4:50/km på intervaller'.",
-            },
-            purpose: { type: "string", description: "Syfte med passet." },
-            why_now: {
-              type: "string",
-              description:
-                "Varför just detta pass nu, baserat på senaste pass/belastning.",
-            },
+            type: { type: "string" },
+            distance_km: { type: ["number", "null"] },
+            target_pace: { type: "string" },
+            note: { type: "string", description: "Kort kommentar (max ~15 ord)." },
           },
-          required: ["type", "distance_km", "target_pace", "purpose", "why_now"],
-          additionalProperties: false,
-        },
-        week_plan: {
-          type: "array",
-          minItems: 7,
-          maxItems: 7,
-          items: {
-            type: "object",
-            properties: {
-              day: {
-                type: "string",
-                description: "Dag 1-7 från idag, t.ex. 'Mån', 'Tis'.",
-              },
-              type: { type: "string" },
-              distance_km: { type: ["number", "null"] },
-              target_pace: { type: "string" },
-              note: { type: "string", description: "Kort kommentar (max ~15 ord)." },
-            },
-            required: ["day", "type", "distance_km", "target_pace", "note"],
-            additionalProperties: false,
-          },
+          required: ["day", "type", "distance_km", "target_pace", "note"],
         },
       },
-      required: ["summary", "next_session", "week_plan"],
-      additionalProperties: false,
     },
+    required: ["summary", "next_session", "week_plan"],
   },
 };
 
