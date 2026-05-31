@@ -214,8 +214,8 @@ function toLocalDateString(date: Date): string {
 }
 
 export async function generatePlan(): Promise<CoachPlan> {
-  const apiKey = process.env.LOVABLE_API_KEY;
-  if (!apiKey) throw new Error("LOVABLE_API_KEY saknas");
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error("ANTHROPIC_API_KEY saknas");
 
   // Ensure the coach is based on the latest Strava data even if the webhook
   // has not delivered or processed the newest activity yet.
