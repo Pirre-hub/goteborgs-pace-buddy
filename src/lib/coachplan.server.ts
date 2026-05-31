@@ -411,30 +411,31 @@ Generera commentary (3–5 meningar, börja med senaste passets datum + tempo) +
   const res = await fetch(AI_URL, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${apiKey}`,
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: user },
-      ],
+      model: AI_MODEL,
+      max_tokens: 8192,
+      system,
+      messages: [{ role: "user", content: user }],
       tools: [TOOL],
-      tool_choice: { type: "function", function: { name: "rolling_plan" } },
+      tool_choice: { type: "tool", name: "rolling_plan" },
     }),
   });
 
   if (res.status === 429)
-    throw new Error("AI:n är överbelastad. Försök igen om en stund.");
-  if (res.status === 402)
-    throw new Error("AI-krediterna är slut. Fyll på i Settings.");
+    throw new Error("Claude är överbelastad. Försök igen om en stund.");
+  if (res.status === 401) throw new Error("Claude API-nyckeln är ogiltig.");
+  if (res.status === 529)
+    throw new Error("Claude är överbelastad. Försök igen.");
   if (!res.ok) throw new Error(`AI-fel [${res.status}]: ${await res.text()}`);
 
   const json = await res.json();
-  const args = json.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
-  if (!args) throw new Error("AI returnerade inget svar");
-  const parsed = JSON.parse(args) as {
+  const toolUse = json.content?.find((c: { type: string }) => c.type === "tool_use");
+  if (!toolUse?.input) throw new Error("Claude returnerade inget svar");
+  const parsed = toolUse.input as {
     commentary: string;
     plan: PlanDay[];
   };
