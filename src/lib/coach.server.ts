@@ -1,5 +1,6 @@
 // Server-only training coach helpers
-const AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const AI_URL = "https://api.anthropic.com/v1/messages";
+const AI_MODEL = "claude-sonnet-4-5";
 
 export type RunInput = {
   date: string; // ISO local
