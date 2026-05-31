@@ -25,49 +25,44 @@ export type CoachPlan = {
 };
 
 const TOOL = {
-  type: "function" as const,
-  function: {
-    name: "rolling_plan",
-    description: "ACWR-baserad coach-kommentar + 14 dagars träningsplan.",
-    parameters: {
-      type: "object",
-      properties: {
-        commentary: {
-          type: "string",
-          description:
-            "2-4 meningar prestationsanalys senaste 7 dagar + hur planen anpassas. Svenska, varm peppande ton.",
-        },
-        plan: {
-          type: "array",
-          minItems: 14,
-          maxItems: 14,
-          items: {
-            type: "object",
-            properties: {
-              day_offset: { type: "number" },
-              weekday: { type: "string" },
-              date: { type: "string" },
-              type: { type: "string" },
-              distance_km: { type: ["number", "null"] },
-              target_pace: { type: "string" },
-              purpose: { type: "string" },
-            },
-            required: [
-              "day_offset",
-              "weekday",
-              "date",
-              "type",
-              "distance_km",
-              "target_pace",
-              "purpose",
-            ],
-            additionalProperties: false,
+  name: "rolling_plan",
+  description: "ACWR-baserad coach-kommentar + 14 dagars träningsplan.",
+  input_schema: {
+    type: "object",
+    properties: {
+      commentary: {
+        type: "string",
+        description:
+          "2-4 meningar prestationsanalys senaste 7 dagar + hur planen anpassas. Svenska, varm peppande ton.",
+      },
+      plan: {
+        type: "array",
+        minItems: 14,
+        maxItems: 14,
+        items: {
+          type: "object",
+          properties: {
+            day_offset: { type: "number" },
+            weekday: { type: "string" },
+            date: { type: "string" },
+            type: { type: "string" },
+            distance_km: { type: ["number", "null"] },
+            target_pace: { type: "string" },
+            purpose: { type: "string" },
           },
+          required: [
+            "day_offset",
+            "weekday",
+            "date",
+            "type",
+            "distance_km",
+            "target_pace",
+            "purpose",
+          ],
         },
       },
-      required: ["commentary", "plan"],
-      additionalProperties: false,
     },
+    required: ["commentary", "plan"],
   },
 };
 
