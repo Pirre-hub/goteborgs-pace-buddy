@@ -101,8 +101,8 @@ export async function generateAdvice(
   runs: RunInput[],
   goal: GoalContext,
 ): Promise<CoachAdvice> {
-  const apiKey = process.env.LOVABLE_API_KEY;
-  if (!apiKey) throw new Error("LOVABLE_API_KEY saknas");
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error("ANTHROPIC_API_KEY saknas");
 
   const today = new Date();
   const raceDate = new Date(goal.race_date);
