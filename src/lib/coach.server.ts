@@ -1,5 +1,6 @@
 // Server-only training coach helpers
-const AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const AI_URL = "https://api.anthropic.com/v1/messages";
+const AI_MODEL = "claude-sonnet-4-5";
 
 export type RunInput = {
   date: string; // ISO local
@@ -32,66 +33,60 @@ export type CoachAdvice = {
 };
 
 const TOOL = {
-  type: "function" as const,
-  function: {
-    name: "training_advice",
-    description:
-      "Returnera nästa pass + 7 dagars plan på svenska för en löpare som tränar mot Göteborgsvarvet.",
-    parameters: {
-      type: "object",
-      properties: {
-        summary: {
-          type: "string",
-          description:
-            "1-2 meningar om belastningen senaste veckorna och vad fokus bör vara nu.",
+  name: "training_advice",
+  description:
+    "Returnera nästa pass + 7 dagars plan på svenska för en löpare som tränar mot Göteborgsvarvet.",
+  input_schema: {
+    type: "object",
+    properties: {
+      summary: {
+        type: "string",
+        description:
+          "1-2 meningar om belastningen senaste veckorna och vad fokus bör vara nu.",
+      },
+      next_session: {
+        type: "object",
+        properties: {
+          type: {
+            type: "string",
+            description:
+              "T.ex. 'Lugnt distanspass', 'Intervaller 5x1000m', 'Tröskel', 'Långpass', 'Vila'.",
+          },
+          distance_km: { type: "number" },
+          target_pace: {
+            type: "string",
+            description: "Måltempo, t.ex. '6:30/km' eller '4:50/km på intervaller'.",
+          },
+          purpose: { type: "string", description: "Syfte med passet." },
+          why_now: {
+            type: "string",
+            description:
+              "Varför just detta pass nu, baserat på senaste pass/belastning.",
+          },
         },
-        next_session: {
+        required: ["type", "distance_km", "target_pace", "purpose", "why_now"],
+      },
+      week_plan: {
+        type: "array",
+        minItems: 7,
+        maxItems: 7,
+        items: {
           type: "object",
           properties: {
-            type: {
+            day: {
               type: "string",
-              description:
-                "T.ex. 'Lugnt distanspass', 'Intervaller 5x1000m', 'Tröskel', 'Långpass', 'Vila'.",
+              description: "Dag 1-7 från idag, t.ex. 'Mån', 'Tis'.",
             },
-            distance_km: { type: "number" },
-            target_pace: {
-              type: "string",
-              description: "Måltempo, t.ex. '6:30/km' eller '4:50/km på intervaller'.",
-            },
-            purpose: { type: "string", description: "Syfte med passet." },
-            why_now: {
-              type: "string",
-              description:
-                "Varför just detta pass nu, baserat på senaste pass/belastning.",
-            },
+            type: { type: "string" },
+            distance_km: { type: ["number", "null"] },
+            target_pace: { type: "string" },
+            note: { type: "string", description: "Kort kommentar (max ~15 ord)." },
           },
-          required: ["type", "distance_km", "target_pace", "purpose", "why_now"],
-          additionalProperties: false,
-        },
-        week_plan: {
-          type: "array",
-          minItems: 7,
-          maxItems: 7,
-          items: {
-            type: "object",
-            properties: {
-              day: {
-                type: "string",
-                description: "Dag 1-7 från idag, t.ex. 'Mån', 'Tis'.",
-              },
-              type: { type: "string" },
-              distance_km: { type: ["number", "null"] },
-              target_pace: { type: "string" },
-              note: { type: "string", description: "Kort kommentar (max ~15 ord)." },
-            },
-            required: ["day", "type", "distance_km", "target_pace", "note"],
-            additionalProperties: false,
-          },
+          required: ["day", "type", "distance_km", "target_pace", "note"],
         },
       },
-      required: ["summary", "next_session", "week_plan"],
-      additionalProperties: false,
     },
+    required: ["summary", "next_session", "week_plan"],
   },
 };
 
@@ -106,8 +101,8 @@ export async function generateAdvice(
   runs: RunInput[],
   goal: GoalContext,
 ): Promise<CoachAdvice> {
-  const apiKey = process.env.LOVABLE_API_KEY;
-  if (!apiKey) throw new Error("LOVABLE_API_KEY saknas");
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error("ANTHROPIC_API_KEY saknas");
 
   const today = new Date();
   const raceDate = new Date(goal.race_date);
@@ -164,33 +159,33 @@ Ge nästa pass + 7-dagars plan via verktyget training_advice.`;
   const res = await fetch(AI_URL, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${apiKey}`,
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "google/gemini-3-flash-preview",
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: user },
-      ],
+      model: AI_MODEL,
+      max_tokens: 4096,
+      system,
+      messages: [{ role: "user", content: user }],
       tools: [TOOL],
-      tool_choice: { type: "function", function: { name: "training_advice" } },
+      tool_choice: { type: "tool", name: "training_advice" },
     }),
   });
 
-  if (res.status === 429) throw new Error("AI:n är överbelastad. Försök igen om en stund.");
-  if (res.status === 402) throw new Error("AI-krediterna är slut. Fyll på i Settings → Workspace → Usage.");
+  if (res.status === 429) throw new Error("Claude är överbelastad. Försök igen om en stund.");
+  if (res.status === 401) throw new Error("Claude API-nyckeln är ogiltig.");
+  if (res.status === 529) throw new Error("Claude är överbelastad. Försök igen.");
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`AI-fel [${res.status}]: ${text}`);
   }
 
   const json = await res.json();
-  const call = json.choices?.[0]?.message?.tool_calls?.[0];
-  if (!call?.function?.arguments) throw new Error("AI returnerade inget verktygssvar.");
+  const toolUse = json.content?.find((c: { type: string }) => c.type === "tool_use");
+  if (!toolUse?.input) throw new Error("Claude returnerade inget verktygssvar.");
 
-  const parsed = JSON.parse(call.function.arguments) as CoachAdvice;
-  return parsed;
+  return toolUse.input as CoachAdvice;
 }
 
 function formatPace(secPerKm: number) {

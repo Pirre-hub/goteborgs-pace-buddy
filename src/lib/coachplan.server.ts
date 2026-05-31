@@ -2,7 +2,8 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { backfillRecentRuns } from "./strava.server";
 
-const AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const AI_URL = "https://api.anthropic.com/v1/messages";
+const AI_MODEL = "claude-sonnet-4-5";
 
 export type PlanDay = {
   day_offset: number; // 0 = idag
@@ -24,49 +25,44 @@ export type CoachPlan = {
 };
 
 const TOOL = {
-  type: "function" as const,
-  function: {
-    name: "rolling_plan",
-    description: "ACWR-baserad coach-kommentar + 14 dagars träningsplan.",
-    parameters: {
-      type: "object",
-      properties: {
-        commentary: {
-          type: "string",
-          description:
-            "2-4 meningar prestationsanalys senaste 7 dagar + hur planen anpassas. Svenska, varm peppande ton.",
-        },
-        plan: {
-          type: "array",
-          minItems: 14,
-          maxItems: 14,
-          items: {
-            type: "object",
-            properties: {
-              day_offset: { type: "number" },
-              weekday: { type: "string" },
-              date: { type: "string" },
-              type: { type: "string" },
-              distance_km: { type: ["number", "null"] },
-              target_pace: { type: "string" },
-              purpose: { type: "string" },
-            },
-            required: [
-              "day_offset",
-              "weekday",
-              "date",
-              "type",
-              "distance_km",
-              "target_pace",
-              "purpose",
-            ],
-            additionalProperties: false,
+  name: "rolling_plan",
+  description: "ACWR-baserad coach-kommentar + 14 dagars träningsplan.",
+  input_schema: {
+    type: "object",
+    properties: {
+      commentary: {
+        type: "string",
+        description:
+          "2-4 meningar prestationsanalys senaste 7 dagar + hur planen anpassas. Svenska, varm peppande ton.",
+      },
+      plan: {
+        type: "array",
+        minItems: 14,
+        maxItems: 14,
+        items: {
+          type: "object",
+          properties: {
+            day_offset: { type: "number" },
+            weekday: { type: "string" },
+            date: { type: "string" },
+            type: { type: "string" },
+            distance_km: { type: ["number", "null"] },
+            target_pace: { type: "string" },
+            purpose: { type: "string" },
           },
+          required: [
+            "day_offset",
+            "weekday",
+            "date",
+            "type",
+            "distance_km",
+            "target_pace",
+            "purpose",
+          ],
         },
       },
-      required: ["commentary", "plan"],
-      additionalProperties: false,
     },
+    required: ["commentary", "plan"],
   },
 };
 
@@ -218,8 +214,8 @@ function toLocalDateString(date: Date): string {
 }
 
 export async function generatePlan(): Promise<CoachPlan> {
-  const apiKey = process.env.LOVABLE_API_KEY;
-  if (!apiKey) throw new Error("LOVABLE_API_KEY saknas");
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error("ANTHROPIC_API_KEY saknas");
 
   // Ensure the coach is based on the latest Strava data even if the webhook
   // has not delivered or processed the newest activity yet.
@@ -415,30 +411,31 @@ Generera commentary (3–5 meningar, börja med senaste passets datum + tempo) +
   const res = await fetch(AI_URL, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${apiKey}`,
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: user },
-      ],
+      model: AI_MODEL,
+      max_tokens: 8192,
+      system,
+      messages: [{ role: "user", content: user }],
       tools: [TOOL],
-      tool_choice: { type: "function", function: { name: "rolling_plan" } },
+      tool_choice: { type: "tool", name: "rolling_plan" },
     }),
   });
 
   if (res.status === 429)
-    throw new Error("AI:n är överbelastad. Försök igen om en stund.");
-  if (res.status === 402)
-    throw new Error("AI-krediterna är slut. Fyll på i Settings.");
+    throw new Error("Claude är överbelastad. Försök igen om en stund.");
+  if (res.status === 401) throw new Error("Claude API-nyckeln är ogiltig.");
+  if (res.status === 529)
+    throw new Error("Claude är överbelastad. Försök igen.");
   if (!res.ok) throw new Error(`AI-fel [${res.status}]: ${await res.text()}`);
 
   const json = await res.json();
-  const args = json.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
-  if (!args) throw new Error("AI returnerade inget svar");
-  const parsed = JSON.parse(args) as {
+  const toolUse = json.content?.find((c: { type: string }) => c.type === "tool_use");
+  if (!toolUse?.input) throw new Error("Claude returnerade inget svar");
+  const parsed = toolUse.input as {
     commentary: string;
     plan: PlanDay[];
   };
