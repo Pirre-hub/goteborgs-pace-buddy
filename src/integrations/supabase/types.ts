@@ -35,6 +35,33 @@ export type Database = {
         }
         Relationships: []
       }
+      coach_conversations: {
+        Row: {
+          content: string
+          created_at: string
+          date: string
+          id: string
+          role: string
+          triggers_replan: boolean | null
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          date: string
+          id?: string
+          role: string
+          triggers_replan?: boolean | null
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          date?: string
+          id?: string
+          role?: string
+          triggers_replan?: boolean | null
+        }
+        Relationships: []
+      }
       coach_plan: {
         Row: {
           acwr: number | null
