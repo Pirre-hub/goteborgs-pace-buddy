@@ -11,6 +11,48 @@ const CHOICE_OPTIONS: { type: ChoiceType; label: string; icon: string; color: st
   { type: "rest", label: "Vila", icon: "🛏", color: "#9ca3af" },
 ];
 
+const SUGGESTIONS: Record<ChoiceType, { title: string; details: string[] }> = {
+  running: {
+    title: "Förslag: Lugnt distanspass",
+    details: ["5–7 km", "Tempo 6:30–7:00/km", "Puls < 145"],
+  },
+  strength: {
+    title: "Förslag: Gympass 45 min (löparstyrka)",
+    details: [
+      "Uppvärmning: 5 min rodd/cykel + dynamisk rörlighet",
+      "Knäböj 3×8 (måttlig vikt)",
+      "Marklyft 3×6 eller rumänska marklyft 3×8",
+      "Utfall 3×10/sida",
+      "Höftlyft 3×12",
+      "Vadpress 3×15",
+      "Plankan 3×45 sek + sidoplanka 3×30 sek/sida",
+    ],
+  },
+  walking: {
+    title: "Förslag: Rask promenad",
+    details: ["30–45 min", "Lätt andning, kunna prata", "Återhämtning + rörlighet"],
+  },
+  rest: {
+    title: "Förslag: Aktiv vila",
+    details: ["10 min mobility/stretch", "Fokus: höfter, vader, rygg", "Sov 7–8 h"],
+  },
+};
+
+function WorkoutSuggestion({ type }: { type: ChoiceType }) {
+  const s = SUGGESTIONS[type];
+  if (!s) return null;
+  return (
+    <div className="mt-2 rounded-md border bg-background p-2 space-y-1">
+      <div className="text-xs font-semibold">{s.title}</div>
+      <ul className="text-xs text-muted-foreground list-disc pl-4 space-y-0.5">
+        {s.details.map((d) => (
+          <li key={d}>{d}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function optionFor(type: string | null | undefined) {
   return CHOICE_OPTIONS.find((o) => o.type === type);
 }
@@ -81,6 +123,9 @@ export function DailyChoiceCard({
             Du valde {chosen?.label.toLowerCase()} istället för{" "}
             {optionFor(saved.recommended_type)?.label.toLowerCase()}
           </p>
+        )}
+        {saved.actual_choice && (
+          <WorkoutSuggestion type={saved.actual_choice as ChoiceType} />
         )}
       </div>
     );
