@@ -36,11 +36,13 @@ export function DailyBriefingCard() {
   const runsFn = useServerFn(stravaGetRuns);
   const planFn = useServerFn(getCoachPlan);
   const loadFn = useServerFn(getTrainingLoad);
+  const choicesFn = useServerFn(getRecentChoices);
 
   const goalQ = useQuery({ queryKey: ["active-goal"], queryFn: () => goalFn() });
   const runsQ = useQuery({ queryKey: ["strava-runs"], queryFn: () => runsFn() });
   const planQ = useQuery({ queryKey: ["coach-plan"], queryFn: () => planFn() });
   const loadQ = useQuery({ queryKey: ["training-load"], queryFn: () => loadFn() });
+  const choicesQ = useQuery({ queryKey: ["recent-choices"], queryFn: () => choicesFn() });
 
   const goal = goalQ.data?.goal;
   const yesterday = runsQ.data?.runs?.[0];
