@@ -6,6 +6,15 @@ import { stravaGetRuns } from "@/lib/strava.functions";
 import { getCoachPlan, getTrainingLoad } from "@/lib/coachplan.functions";
 import { format, parseISO, differenceInDays } from "date-fns";
 import { sv } from "date-fns/locale";
+import { DailyChoiceCard } from "./DailyChoiceCard";
+
+function toChoiceCategory(type: string | undefined): "running" | "strength" | "walking" | "rest" {
+  if (!type) return "running";
+  if (/gym|styrka|strength/i.test(type)) return "strength";
+  if (/vila|rest/i.test(type)) return "rest";
+  if (/gång|gang|promenad|walk/i.test(type)) return "walking";
+  return "running";
+}
 
 function formatPace(secPerKm: number) {
   if (!secPerKm || !isFinite(secPerKm)) return "–";
