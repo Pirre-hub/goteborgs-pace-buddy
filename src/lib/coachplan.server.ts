@@ -28,12 +28,12 @@ const TOOL = {
   name: "rolling_plan",
   description: "ACWR-baserad coach-kommentar + 14 dagars träningsplan.",
   input_schema: {
-    type: "object",
+    type: "object" as const,
     properties: {
       commentary: {
         type: "string",
         description:
-          "2-4 meningar prestationsanalys senaste 7 dagar + hur planen anpassas. Svenska, varm peppande ton.",
+          "3-5 meningar prestationsanalys. Nämn senaste passets tempo och distans explicit. Direkt, ärlig, peppande ton – inte defensiv.",
       },
       plan: {
         type: "array",
@@ -59,10 +59,12 @@ const TOOL = {
             "target_pace",
             "purpose",
           ],
+          additionalProperties: false,
         },
       },
     },
     required: ["commentary", "plan"],
+    additionalProperties: false,
   },
 };
 
