@@ -45,11 +45,35 @@ export const sendMessage = createServerFn({ method: "POST" })
     const { message, planContext } = data;
     const dateStr = todayStr();
 
+    // Detect explicit choice from message and persist to daily_choices
+    const lower = message.toLowerCase();
+    let detectedChoice: "running" | "strength" | "walking" | "rest" | null = null;
+    if (/\b(löpning|löper|löpa|spring|springer|jogg)/.test(lower)) detectedChoice = "running";
+    else if (/\b(styrka|gym|styrkepass)/.test(lower)) detectedChoice = "strength";
+    else if (/\b(promenad|promenera|går\s|walk)/.test(lower)) detectedChoice = "walking";
+    else if (/\b(vila|vilar|vilodag|rest)/.test(lower)) detectedChoice = "rest";
+
+    if (detectedChoice) {
+      await supabaseAdmin
+        .from("daily_choices")
+        .upsert(
+          {
+            date: dateStr,
+            recommended_type: planContext.todayPlan.slice(0, 64) || "unknown",
+            actual_choice: detectedChoice,
+            note: message,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "date" },
+        );
+    }
+
     await supabaseAdmin.from("coach_conversations").insert({
       date: dateStr,
       role: "user",
       content: message,
     });
+
 
     const { data: history } = await supabaseAdmin
       .from("coach_conversations")
@@ -129,7 +153,9 @@ Annars inkludera INTE denna markör.`;
 
     const replanMatch = responseText.match(/REPLAN:(\{[\s\S]*\})/);
     const cleanResponse = responseText.replace(/\s*REPLAN:\{[\s\S]*\}\s*$/, "").trim();
-    const triggersReplan = !!replanMatch;
+    // Always replan when the user explicitly chose a workout type – the
+    // schedule needs to reflect that choice immediately.
+    const triggersReplan = !!replanMatch || !!detectedChoice;
 
     await supabaseAdmin.from("coach_conversations").insert({
       date: dateStr,
@@ -148,3 +174,4 @@ Annars inkludera INTE denna markör.`;
 
     return { response: cleanResponse, triggersReplan };
   });
+
