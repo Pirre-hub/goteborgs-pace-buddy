@@ -32,12 +32,46 @@ const ZONE_LABEL: Record<string, { text: string; tone: string; Icon: typeof Tren
   danger: { text: "Skadezon", tone: "text-red-500", Icon: ShieldAlert },
 };
 
-function passIcon(type: string) {
+type PassKind = "gym" | "rest" | "run";
+
+function passKind(type: string): PassKind {
   const t = type.toLowerCase();
-  if (t.includes("vila") || t.includes("rest")) return Bed;
-  if (t.includes("interval") || t.includes("tröskel") || t.includes("tempo"))
-    return Zap;
-  return Activity;
+  if (t.includes("gym") || t.includes("styrka") || t.includes("strength"))
+    return "gym";
+  if (t.includes("vila") || t.includes("rest")) return "rest";
+  return "run";
+}
+
+function passStyle(kind: PassKind) {
+  if (kind === "gym")
+    return {
+      border: "border-l-4 border-l-[#6366f1]",
+      emoji: "💪",
+      iconTone: "text-[#6366f1]",
+    };
+  if (kind === "rest")
+    return {
+      border: "border-l-4 border-l-muted-foreground/40",
+      emoji: "🛏",
+      iconTone: "text-muted-foreground",
+    };
+  return {
+    border: "border-l-4 border-l-strava",
+    emoji: "🏃",
+    iconTone: "text-strava",
+  };
+}
+
+function passMetric(d: {
+  distance_km: number | null;
+  duration_min: number | null;
+  target_pace: string;
+  type: string;
+}) {
+  const kind = passKind(d.type);
+  if (kind === "gym") return d.duration_min ? `${d.duration_min} min` : "Styrka";
+  if (kind === "rest") return "Vila";
+  return `${d.distance_km != null ? `${d.distance_km} km` : "–"}${d.target_pace ? ` • ${d.target_pace}` : ""}`;
 }
 
 export function CoachPlanCard() {
