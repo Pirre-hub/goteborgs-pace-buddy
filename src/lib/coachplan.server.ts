@@ -401,7 +401,12 @@ COACHREGLER:
 
 6. Förklara varje pass i purpose: varför just detta pass, varför just denna dag
 
-7. Varannan vecka = långpassvecka, varannan = normalvecka med kvalitetspass`;
+7. Varannan vecka = långpassvecka, varannan = normalvecka med kvalitetspass
+
+8. FÄLT-REGLER per passtyp:
+   - Löppass: distance_km = km, duration_min = null, target_pace = "5:40/km" etc.
+   - Gym/Styrka: type ska innehålla "Gym" (t.ex. "Gym (styrka)"), distance_km = null, duration_min = 45, target_pace = "–"
+   - Vila: distance_km = null, duration_min = null, target_pace = "–"`;
 
   const latestRunRelative = based_on_run
     ? (() => {
