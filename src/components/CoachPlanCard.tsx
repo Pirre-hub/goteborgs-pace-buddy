@@ -250,15 +250,19 @@ export function CoachPlanCard() {
                         <TableRow>
                           <TableHead>Dag</TableHead>
                           <TableHead>Pass</TableHead>
-                          <TableHead className="text-right">Distans</TableHead>
+                          <TableHead className="text-right">Mängd</TableHead>
                           <TableHead className="text-right">Tempo</TableHead>
                           <TableHead>Syfte</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {plan.plan.slice(7, 14).map((d) => (
+                        {plan.plan.slice(7, 14).map((d) => {
+                          const kind = passKind(d.type);
+                          const style = passStyle(kind);
+                          return (
                           <TableRow key={d.day_offset}>
-                            <TableCell className="font-medium">
+                            <TableCell className={`font-medium ${style.border}`}>
+                              <span className="mr-1">{style.emoji}</span>
                               {d.weekday}{" "}
                               {d.date
                                 ? `${new Date(d.date).getDate()}/${new Date(d.date).getMonth() + 1}`
@@ -266,7 +270,13 @@ export function CoachPlanCard() {
                             </TableCell>
                             <TableCell>{d.type}</TableCell>
                             <TableCell className="text-right tabular-nums">
-                              {d.distance_km != null
+                              {kind === "gym"
+                                ? d.duration_min
+                                  ? `${d.duration_min} min`
+                                  : "–"
+                                : kind === "rest"
+                                ? "–"
+                                : d.distance_km != null
                                 ? `${d.distance_km} km`
                                 : "–"}
                             </TableCell>
