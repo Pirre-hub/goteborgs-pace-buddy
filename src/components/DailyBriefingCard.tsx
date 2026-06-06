@@ -123,10 +123,7 @@ export function DailyBriefingCard() {
                 <div className="tabular-nums text-sm">
                   {today0.distance_km} km
                 </div>
-        )}
-
-        <DailyChoiceCard recommendedType={toChoiceCategory(today0?.type)} />
-
+              )}
               <div className="tabular-nums text-sm text-muted-foreground">
                 {today0.target_pace}
               </div>
@@ -136,6 +133,8 @@ export function DailyBriefingCard() {
             )}
           </div>
         )}
+
+        <DailyChoiceCard recommendedType={toChoiceCategory(today0?.type)} />
 
         <p className="text-sm italic text-muted-foreground pt-1">
           {motivation(tsb, daysToGoal)}
