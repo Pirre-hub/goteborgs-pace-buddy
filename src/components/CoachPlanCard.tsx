@@ -287,7 +287,8 @@ export function CoachPlanCard() {
                               {d.purpose}
                             </TableCell>
                           </TableRow>
-                        ))}
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   </div>
