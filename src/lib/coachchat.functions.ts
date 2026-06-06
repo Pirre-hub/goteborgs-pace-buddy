@@ -153,7 +153,9 @@ Annars inkludera INTE denna markör.`;
 
     const replanMatch = responseText.match(/REPLAN:(\{[\s\S]*\})/);
     const cleanResponse = responseText.replace(/\s*REPLAN:\{[\s\S]*\}\s*$/, "").trim();
-    const triggersReplan = !!replanMatch;
+    // Always replan when the user explicitly chose a workout type – the
+    // schedule needs to reflect that choice immediately.
+    const triggersReplan = !!replanMatch || !!detectedChoice;
 
     await supabaseAdmin.from("coach_conversations").insert({
       date: dateStr,
@@ -172,3 +174,4 @@ Annars inkludera INTE denna markör.`;
 
     return { response: cleanResponse, triggersReplan };
   });
+
