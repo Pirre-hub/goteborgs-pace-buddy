@@ -231,6 +231,7 @@ function Dashboard() {
           qc.invalidateQueries({ queryKey: ["strava-runs"] });
           await refreshFn();
           qc.invalidateQueries({ queryKey: ["coach-plan"] });
+          qc.invalidateQueries({ queryKey: ["coach-chat-today"] });
           toast.info("Coach uppdaterad efter nytt Strava-pass");
         },
       )
