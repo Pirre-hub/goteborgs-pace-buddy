@@ -99,6 +99,10 @@ export function CoachPlanCard() {
 
   const plan = refreshMut.data?.plan ?? q.data?.plan;
 
+  if (plan && import.meta.env.DEV) {
+    console.log("[CoachPlan] full plan (", plan.plan.length, "days):", plan.plan);
+  }
+
   return (
     <Card className="border-strava/30">
       <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
