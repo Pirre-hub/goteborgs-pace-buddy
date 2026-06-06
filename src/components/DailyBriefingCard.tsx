@@ -155,7 +155,7 @@ export function DailyBriefingCard() {
           </div>
         )}
 
-        <DailyChoiceCard recommendedType={toChoiceCategory(today0?.type)} />
+        <CoachChatCard planContext={planContext} />
 
         <p className="text-sm italic text-muted-foreground pt-1">
           {motivation(tsb, daysToGoal)}
