@@ -226,7 +226,7 @@ export async function generatePlan(): Promise<CoachPlan> {
   // has not delivered or processed the newest activity yet.
   await backfillRecentRuns();
 
-  const [{ data: goal }, { data: acts }] = await Promise.all([
+  const [{ data: goal }, { data: acts }, { data: choices }] = await Promise.all([
     supabaseAdmin
       .from("race_goal")
       .select("name, race_date, distance_km, goal_pace_sec")
@@ -239,7 +239,33 @@ export async function generatePlan(): Promise<CoachPlan> {
       )
       .order("start_date_local", { ascending: false })
       .limit(40),
+    supabaseAdmin
+      .from("daily_choices")
+      .select("date, recommended_type, actual_choice")
+      .order("date", { ascending: false })
+      .limit(14),
   ]);
+
+  const deviations = (choices ?? [])
+    .filter(
+      (c) =>
+        c.actual_choice &&
+        c.actual_choice !== c.recommended_type &&
+        c.actual_choice !== "rest",
+    )
+    .map(
+      (c) =>
+        `${c.date}: rekommenderade ${c.recommended_type}, valde ${c.actual_choice}`,
+    );
+
+  const consecutiveDeviations = (() => {
+    let count = 0;
+    for (const c of choices ?? []) {
+      if (c.actual_choice && c.actual_choice !== c.recommended_type) count++;
+      else break;
+    }
+    return count;
+  })();
 
   const goalPace = goal?.goal_pace_sec ?? 360;
   const runs = (acts ?? []).map((r) => ({
@@ -412,7 +438,9 @@ COACHREGLER:
 9. FÄLT-REGLER per passtyp:
    - Löppass: distance_km = km, duration_min = null, target_pace = "6:40/km" etc.
    - Gym/Styrka: type ska innehålla "Gym" (t.ex. "Gym (styrka)"), distance_km = null, duration_min = 45, target_pace = "–"
-   - Vila: distance_km = null, duration_min = null, target_pace = "–"`;
+   - Vila: distance_km = null, duration_min = null, target_pace = "–"
+
+10. Om atleten konsekvent avviker från rekommenderade pass (3+ dagar i rad), MÅSTE du nämna det direkt i commentary och ställa en konkret fråga om orsaken (skada, trötthet, motivation) och anpassa planen därefter.`;
 
 
   const latestRunRelative = based_on_run
@@ -471,7 +499,7 @@ ${upcomingDates.join("\n")}
 
 Generera commentary (3–5 meningar, börja med senaste passets datum + tempo) + 14 pass via rolling_plan. Varje purpose ska vara 2–3 meningar som förklarar VARFÖR just detta pass just denna dag, kopplat till ACWR och dagar till lopp.
 
-KONTROLL INNAN DU SVARAR: räkna dina 14 dagar – det MÅSTE finnas exakt 2 gympass (type innehåller "Gym") och max 6 löppass totalt. Resten är vila. Om inte – gör om planen.`;
+KONTROLL INNAN DU SVARAR: räkna dina 14 dagar – det MÅSTE finnas exakt 2 gympass (type innehåller "Gym") och max 6 löppass totalt. Resten är vila. Om inte – gör om planen.${deviations.length > 0 ? `\n\nAVVIKELSER SENASTE 14 DAGAR:\n${deviations.join("\n")}` : ""}${consecutiveDeviations >= 3 ? `\n\nVARNING: Atleten har avvikit från rekommendationen ${consecutiveDeviations} dagar i rad. Påtala detta direkt i commentary – fråga om det är skada, trötthet eller motivation och anpassa planen därefter.` : ""}`;
 
   const res = await fetch(AI_URL, {
     method: "POST",
