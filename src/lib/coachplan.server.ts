@@ -9,8 +9,9 @@ export type PlanDay = {
   day_offset: number; // 0 = idag
   weekday: string; // "Mån"
   date: string; // ISO yyyy-mm-dd
-  type: string; // "Lugn distans", "Intervaller", "Vila"...
+  type: string; // "Lugn distans", "Intervaller", "Vila", "Gym (styrka)"...
   distance_km: number | null;
+  duration_min: number | null;
   target_pace: string;
   purpose: string;
 };
@@ -47,6 +48,7 @@ const TOOL = {
             date: { type: "string" },
             type: { type: "string" },
             distance_km: { type: ["number", "null"] },
+            duration_min: { type: ["number", "null"] },
             target_pace: { type: "string" },
             purpose: { type: "string" },
           },
@@ -56,6 +58,7 @@ const TOOL = {
             "date",
             "type",
             "distance_km",
+            "duration_min",
             "target_pace",
             "purpose",
           ],
@@ -398,7 +401,12 @@ COACHREGLER:
 
 6. Förklara varje pass i purpose: varför just detta pass, varför just denna dag
 
-7. Varannan vecka = långpassvecka, varannan = normalvecka med kvalitetspass`;
+7. Varannan vecka = långpassvecka, varannan = normalvecka med kvalitetspass
+
+8. FÄLT-REGLER per passtyp:
+   - Löppass: distance_km = km, duration_min = null, target_pace = "5:40/km" etc.
+   - Gym/Styrka: type ska innehålla "Gym" (t.ex. "Gym (styrka)"), distance_km = null, duration_min = 45, target_pace = "–"
+   - Vila: distance_km = null, duration_min = null, target_pace = "–"`;
 
   const latestRunRelative = based_on_run
     ? (() => {

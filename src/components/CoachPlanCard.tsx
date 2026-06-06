@@ -32,12 +32,46 @@ const ZONE_LABEL: Record<string, { text: string; tone: string; Icon: typeof Tren
   danger: { text: "Skadezon", tone: "text-red-500", Icon: ShieldAlert },
 };
 
-function passIcon(type: string) {
+type PassKind = "gym" | "rest" | "run";
+
+function passKind(type: string): PassKind {
   const t = type.toLowerCase();
-  if (t.includes("vila") || t.includes("rest")) return Bed;
-  if (t.includes("interval") || t.includes("tröskel") || t.includes("tempo"))
-    return Zap;
-  return Activity;
+  if (t.includes("gym") || t.includes("styrka") || t.includes("strength"))
+    return "gym";
+  if (t.includes("vila") || t.includes("rest")) return "rest";
+  return "run";
+}
+
+function passStyle(kind: PassKind) {
+  if (kind === "gym")
+    return {
+      border: "border-l-4 border-l-[#6366f1]",
+      emoji: "💪",
+      iconTone: "text-[#6366f1]",
+    };
+  if (kind === "rest")
+    return {
+      border: "border-l-4 border-l-muted-foreground/40",
+      emoji: "🛏",
+      iconTone: "text-muted-foreground",
+    };
+  return {
+    border: "border-l-4 border-l-strava",
+    emoji: "🏃",
+    iconTone: "text-strava",
+  };
+}
+
+function passMetric(d: {
+  distance_km: number | null;
+  duration_min: number | null;
+  target_pace: string;
+  type: string;
+}) {
+  const kind = passKind(d.type);
+  if (kind === "gym") return d.duration_min ? `${d.duration_min} min` : "Styrka";
+  if (kind === "rest") return "Vila";
+  return `${d.distance_km != null ? `${d.distance_km} km` : "–"}${d.target_pace ? ` • ${d.target_pace}` : ""}`;
 }
 
 export function CoachPlanCard() {
@@ -64,6 +98,10 @@ export function CoachPlanCard() {
   });
 
   const plan = refreshMut.data?.plan ?? q.data?.plan;
+
+  if (plan && import.meta.env.DEV) {
+    console.log("[CoachPlan] full plan (", plan.plan.length, "days):", plan.plan);
+  }
 
   return (
     <Card className="border-strava/30">
@@ -158,11 +196,12 @@ export function CoachPlanCard() {
             {/* First 7 days as boxes */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
               {plan.plan.slice(0, 7).map((d) => {
-                const Icon = passIcon(d.type);
+                const kind = passKind(d.type);
+                const style = passStyle(kind);
                 return (
                   <div
                     key={d.day_offset}
-                    className="rounded-lg border bg-card p-3 flex flex-col gap-1"
+                    className={`rounded-lg border bg-card p-3 flex flex-col gap-1 ${style.border}`}
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">
@@ -172,12 +211,13 @@ export function CoachPlanCard() {
                           <span className="text-strava ml-1">• Idag</span>
                         )}
                       </span>
-                      <Icon className="h-4 w-4 text-strava" />
+                      <span className={`text-base leading-none ${style.iconTone}`}>
+                        {style.emoji}
+                      </span>
                     </div>
                     <div className="font-semibold text-sm">{d.type}</div>
                     <div className="text-sm tabular-nums text-muted-foreground">
-                      {d.distance_km != null ? `${d.distance_km} km` : "–"}
-                      {d.target_pace ? ` • ${d.target_pace}` : ""}
+                      {passMetric(d)}
                     </div>
                     <div className="text-xs text-muted-foreground line-clamp-2">
                       {d.purpose}
@@ -214,15 +254,19 @@ export function CoachPlanCard() {
                         <TableRow>
                           <TableHead>Dag</TableHead>
                           <TableHead>Pass</TableHead>
-                          <TableHead className="text-right">Distans</TableHead>
+                          <TableHead className="text-right">Mängd</TableHead>
                           <TableHead className="text-right">Tempo</TableHead>
                           <TableHead>Syfte</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {plan.plan.slice(7, 14).map((d) => (
+                        {plan.plan.slice(7, 14).map((d) => {
+                          const kind = passKind(d.type);
+                          const style = passStyle(kind);
+                          return (
                           <TableRow key={d.day_offset}>
-                            <TableCell className="font-medium">
+                            <TableCell className={`font-medium ${style.border}`}>
+                              <span className="mr-1">{style.emoji}</span>
                               {d.weekday}{" "}
                               {d.date
                                 ? `${new Date(d.date).getDate()}/${new Date(d.date).getMonth() + 1}`
@@ -230,7 +274,13 @@ export function CoachPlanCard() {
                             </TableCell>
                             <TableCell>{d.type}</TableCell>
                             <TableCell className="text-right tabular-nums">
-                              {d.distance_km != null
+                              {kind === "gym"
+                                ? d.duration_min
+                                  ? `${d.duration_min} min`
+                                  : "–"
+                                : kind === "rest"
+                                ? "–"
+                                : d.distance_km != null
                                 ? `${d.distance_km} km`
                                 : "–"}
                             </TableCell>
@@ -241,7 +291,8 @@ export function CoachPlanCard() {
                               {d.purpose}
                             </TableCell>
                           </TableRow>
-                        ))}
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   </div>
