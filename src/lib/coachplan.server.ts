@@ -505,6 +505,19 @@ KONTROLL INNAN DU SVARAR: räkna dina 14 dagar – det MÅSTE finnas exakt 2 gym
     plan: PlanDay[];
   };
 
+  const gymCount = parsed.plan.filter((d) =>
+    /gym|styrka|strength/i.test(d.type),
+  ).length;
+  const runCount = parsed.plan.filter(
+    (d) => !/gym|styrka|strength|vila|rest/i.test(d.type),
+  ).length;
+  console.log(
+    `[CoachPlan] generated 14d: ${runCount} löp, ${gymCount} gym, ${14 - runCount - gymCount} vila`,
+  );
+  if (gymCount < 2) {
+    console.warn("[CoachPlan] AI skipped gym days, expected 2 got", gymCount);
+  }
+
   const computed_at = new Date().toISOString();
   await supabaseAdmin.from("coach_plan").upsert(
     {
