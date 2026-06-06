@@ -499,7 +499,7 @@ ${upcomingDates.join("\n")}
 
 Generera commentary (3–5 meningar, börja med senaste passets datum + tempo) + 14 pass via rolling_plan. Varje purpose ska vara 2–3 meningar som förklarar VARFÖR just detta pass just denna dag, kopplat till ACWR och dagar till lopp.
 
-KONTROLL INNAN DU SVARAR: räkna dina 14 dagar – det MÅSTE finnas exakt 2 gympass (type innehåller "Gym") och max 6 löppass totalt. Resten är vila. Om inte – gör om planen.`;
+KONTROLL INNAN DU SVARAR: räkna dina 14 dagar – det MÅSTE finnas exakt 2 gympass (type innehåller "Gym") och max 6 löppass totalt. Resten är vila. Om inte – gör om planen.${deviations.length > 0 ? `\n\nAVVIKELSER SENASTE 14 DAGAR:\n${deviations.join("\n")}` : ""}${consecutiveDeviations >= 3 ? `\n\nVARNING: Atleten har avvikit från rekommendationen ${consecutiveDeviations} dagar i rad. Påtala detta direkt i commentary – fråga om det är skada, trötthet eller motivation och anpassa planen därefter.` : ""}`;
 
   const res = await fetch(AI_URL, {
     method: "POST",
