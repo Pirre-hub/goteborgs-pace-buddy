@@ -226,7 +226,7 @@ export async function generatePlan(): Promise<CoachPlan> {
   // has not delivered or processed the newest activity yet.
   await backfillRecentRuns();
 
-  const [{ data: goal }, { data: acts }] = await Promise.all([
+  const [{ data: goal }, { data: acts }, { data: choices }] = await Promise.all([
     supabaseAdmin
       .from("race_goal")
       .select("name, race_date, distance_km, goal_pace_sec")
@@ -239,7 +239,33 @@ export async function generatePlan(): Promise<CoachPlan> {
       )
       .order("start_date_local", { ascending: false })
       .limit(40),
+    supabaseAdmin
+      .from("daily_choices")
+      .select("date, recommended_type, actual_choice")
+      .order("date", { ascending: false })
+      .limit(14),
   ]);
+
+  const deviations = (choices ?? [])
+    .filter(
+      (c) =>
+        c.actual_choice &&
+        c.actual_choice !== c.recommended_type &&
+        c.actual_choice !== "rest",
+    )
+    .map(
+      (c) =>
+        `${c.date}: rekommenderade ${c.recommended_type}, valde ${c.actual_choice}`,
+    );
+
+  const consecutiveDeviations = (() => {
+    let count = 0;
+    for (const c of choices ?? []) {
+      if (c.actual_choice && c.actual_choice !== c.recommended_type) count++;
+      else break;
+    }
+    return count;
+  })();
 
   const goalPace = goal?.goal_pace_sec ?? 360;
   const runs = (acts ?? []).map((r) => ({
