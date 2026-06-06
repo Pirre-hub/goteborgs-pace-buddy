@@ -1,29 +1,60 @@
-## Status
+## Problem
 
-Filen `src/lib/coachplan.server.ts` använder redan Anthropic API (`api.anthropic.com/v1/messages`), `claude-sonnet-4-5`, `x-api-key`-headers, tool calling med `rolling_plan`, och `last7Lines` inkluderar redan tempo + puls. CHANGE 1 och CHANGE 3 är alltså redan på plats.
+1. Modellen genererar inga gympass trots att system-prompten säger 4 pass/vecka (3 löp + 1 gym). Den prioriterar löppass och hoppar gympasset.
+2. Planen är för ambitiös – för mycket km, för höga tempon, för många kvalitetspass för en 64-årig motionär.
 
-Det som faktiskt skiljer är **system-prompten** (CHANGE 2) – nuvarande version är den försiktiga "varm peppande" coachen, du vill ha den ambitiösa "direkt, ställer krav"-versionen med 80/20-regeln och tvingande kvalitetspass.
+## Ändringar i `src/lib/coachplan.server.ts`
 
-## Ändringar
+### 1. Tvinga fram gympass i prompten
 
-**1. Byt `system`-konstanten** (rad ~228 i `generatePlan`) till den nya ambitiösa coach-prompten med:
-- Direkt/ärlig ton istället för "varm peppande"
-- 80/20-regeln explicit
-- Krav på 2 kvalitetspass/vecka när ACWR är 0.8–1.3
-- Specifika tempon för varje passtyp (intervaller 5:00–5:20/km, tröskel 5:40–5:55/km, lugnt 6:20–6:50/km)
-- ACWR <0.8 → öka volym istället för "öka försiktigt"
+Lägg till en hård regel överst i `COACHREGLER`:
 
-**2. Uppdatera `commentary`-beskrivningen i `TOOL`** så den matchar nya tonen:
-- Från: "2-4 meningar … varm peppande ton"
-- Till: "3-5 meningar … Direkt, ärlig, peppande ton – inte defensiv"
+> **REGEL 0 (viktigast): Varje 7-dagarsperiod MÅSTE innehålla exakt 1 gympass. Över 14 dagar = exakt 2 gympass. Saknas gympasset är planen ogiltig. Gympasset placeras på en dag mellan två löppass (typ tor eller mån).**
 
-**3. Uppdatera `max_tokens`** från 8192 → 2000 (enligt din spec). Notera: detta är en sänkning som kan trunkera långa planer – bekräfta att du vill ha 2000 (8192 ger marginal för 14-dagarsplanen + commentary).
+Lägg också till explicit exempel-vecka i prompten så modellen ser strukturen konkret:
 
-**4. Höj `max_tokens` i `user`-promptens instruktion** så commentary blir 3–5 meningar (nuvarande säger "3–5", redan korrekt).
+```
+EXEMPEL normalvecka (kopiera mönstret):
+Mån: Lugnt 6 km @ 6:30/km
+Tis: Vila
+Ons: Lugnt 6 km @ 6:30/km  (eller lätt fartlek om ACWR optimal)
+Tor: Gym (styrka) 45 min – knän/höfter
+Fre: Vila
+Lör: Lugnt 8 km @ 6:30/km
+Sön: Vila
+```
 
-Inga andra filer påverkas. Ingen ny secret behövs (`ANTHROPIC_API_KEY` används redan).
+### 2. Sänk ambitionsnivån
 
-## Frågor innan implementation
+- Ta bort kravet på "2 kvalitetspass/vecka" – ersätt med "max 1 kvalitetspass/vecka, och bara om ACWR är 0.8–1.3".
+- Sänk distanser: normalt löppass 6–8 km → **5–7 km**, långpass 14–18 km → **10–14 km**.
+- Lugnt tempo 6:20–6:45/km → **6:30–7:00/km** (mer realistiskt för 64-åring i basperiod).
+- Intervaller 5:00–5:20/km → **5:20–5:40/km**.
+- Tröskel 5:40–5:55/km → **5:50–6:10/km**.
 
-1. **`max_tokens`: 2000 eller behålla 8192?** 14 dagar × ~50 tokens/dag + commentary + tool overhead ligger nära 2000. Risk för trunkering.
-2. **Behålla `TOOL`-konstanten** (din nya `TOOL_ANTHROPIC` har samma struktur + `additionalProperties: false`) eller ersätta? Föreslår: ersätta `TOOL` med innehållet från `TOOL_ANTHROPIC` (en konstant, inte två).
+### 3. Förtydliga 4-dagars-veckan
+
+Byt formuleringen "4 pass per vecka: 3 löppass + 1 gympass" till en explicit räkneregel:
+
+> **Räkna alltid: 3 löppass + 1 gympass + 3 vilodagar = 7 dagar. Aldrig 4 löppass. Aldrig 0 gympass.**
+
+### 4. Validering efter AI-svaret (defensiv)
+
+Efter `parsed = toolUse.input` i `generatePlan()`, lägg till en sanity-check:
+
+```ts
+const gymCount = parsed.plan.filter(d => /gym|styrka|strength/i.test(d.type)).length;
+if (gymCount < 2) {
+  console.warn("[CoachPlan] AI skipped gym days, got", gymCount);
+}
+```
+
+Loggas serverside – ingen retry, men synlig signal om modellen fuskar.
+
+## Inga UI-ändringar
+
+`CoachPlanCard.tsx` hanterar redan gym/vila/löp korrekt (purple border + 💪 för gym, grå + 🛏 för vila). När prompten faktiskt producerar gympass kommer de att visas automatiskt.
+
+## Verifiering
+
+Efter ändring: tryck "Uppdatera coach", öppna devtools-konsolen, kolla `[CoachPlan] full plan (...)`-loggen → ska visa minst 2 dagar med `type` som innehåller "Gym".
