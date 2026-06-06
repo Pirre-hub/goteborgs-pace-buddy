@@ -47,11 +47,13 @@ export function CoachChatCard({ planContext }: { planContext: PlanContext }) {
     onSuccess: (res) => {
       setPendingUser(null);
       qc.invalidateQueries({ queryKey: ["coach-chat-today"] });
+      qc.invalidateQueries({ queryKey: ["recent-choices"] });
       if (res.triggersReplan) {
-        toast.info("Coachen uppdaterar planen…");
+        toast.info("Coachen uppdaterar schemat…");
         qc.invalidateQueries({ queryKey: ["coach-plan"] });
       }
     },
+
     onError: (e: unknown) => {
       setPendingUser(null);
       toast.error(
