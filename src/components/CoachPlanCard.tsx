@@ -192,11 +192,12 @@ export function CoachPlanCard() {
             {/* First 7 days as boxes */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
               {plan.plan.slice(0, 7).map((d) => {
-                const Icon = passIcon(d.type);
+                const kind = passKind(d.type);
+                const style = passStyle(kind);
                 return (
                   <div
                     key={d.day_offset}
-                    className="rounded-lg border bg-card p-3 flex flex-col gap-1"
+                    className={`rounded-lg border bg-card p-3 flex flex-col gap-1 ${style.border}`}
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">
@@ -206,12 +207,13 @@ export function CoachPlanCard() {
                           <span className="text-strava ml-1">• Idag</span>
                         )}
                       </span>
-                      <Icon className="h-4 w-4 text-strava" />
+                      <span className={`text-base leading-none ${style.iconTone}`}>
+                        {style.emoji}
+                      </span>
                     </div>
                     <div className="font-semibold text-sm">{d.type}</div>
                     <div className="text-sm tabular-nums text-muted-foreground">
-                      {d.distance_km != null ? `${d.distance_km} km` : "–"}
-                      {d.target_pace ? ` • ${d.target_pace}` : ""}
+                      {passMetric(d)}
                     </div>
                     <div className="text-xs text-muted-foreground line-clamp-2">
                       {d.purpose}
