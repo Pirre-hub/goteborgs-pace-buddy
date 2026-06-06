@@ -4,17 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getActiveGoal } from "@/lib/goal.functions";
 import { stravaGetRuns } from "@/lib/strava.functions";
 import { getCoachPlan, getTrainingLoad } from "@/lib/coachplan.functions";
+import { getRecentChoices } from "@/lib/dailychoice.functions";
 import { format, parseISO, differenceInDays } from "date-fns";
 import { sv } from "date-fns/locale";
-import { DailyChoiceCard } from "./DailyChoiceCard";
-
-function toChoiceCategory(type: string | undefined): "running" | "strength" | "walking" | "rest" {
-  if (!type) return "running";
-  if (/gym|styrka|strength/i.test(type)) return "strength";
-  if (/vila|rest/i.test(type)) return "rest";
-  if (/gång|gang|promenad|walk/i.test(type)) return "walking";
-  return "running";
-}
+import { CoachChatCard } from "./CoachChatCard";
 
 function formatPace(secPerKm: number) {
   if (!secPerKm || !isFinite(secPerKm)) return "–";
