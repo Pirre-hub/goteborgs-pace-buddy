@@ -9,8 +9,9 @@ export type PlanDay = {
   day_offset: number; // 0 = idag
   weekday: string; // "Mån"
   date: string; // ISO yyyy-mm-dd
-  type: string; // "Lugn distans", "Intervaller", "Vila"...
+  type: string; // "Lugn distans", "Intervaller", "Vila", "Gym (styrka)"...
   distance_km: number | null;
+  duration_min: number | null;
   target_pace: string;
   purpose: string;
 };
