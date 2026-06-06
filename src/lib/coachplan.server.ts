@@ -438,7 +438,9 @@ COACHREGLER:
 9. FÄLT-REGLER per passtyp:
    - Löppass: distance_km = km, duration_min = null, target_pace = "6:40/km" etc.
    - Gym/Styrka: type ska innehålla "Gym" (t.ex. "Gym (styrka)"), distance_km = null, duration_min = 45, target_pace = "–"
-   - Vila: distance_km = null, duration_min = null, target_pace = "–"`;
+   - Vila: distance_km = null, duration_min = null, target_pace = "–"
+
+10. Om atleten konsekvent avviker från rekommenderade pass (3+ dagar i rad), MÅSTE du nämna det direkt i commentary och ställa en konkret fråga om orsaken (skada, trötthet, motivation) och anpassa planen därefter.`;
 
 
   const latestRunRelative = based_on_run
