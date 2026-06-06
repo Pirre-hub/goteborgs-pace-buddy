@@ -65,6 +65,36 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_choices: {
+        Row: {
+          actual_choice: string | null
+          created_at: string
+          date: string
+          id: string
+          note: string | null
+          recommended_type: string
+          updated_at: string
+        }
+        Insert: {
+          actual_choice?: string | null
+          created_at?: string
+          date: string
+          id?: string
+          note?: string | null
+          recommended_type: string
+          updated_at?: string
+        }
+        Update: {
+          actual_choice?: string | null
+          created_at?: string
+          date?: string
+          id?: string
+          note?: string | null
+          recommended_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       pace_dna: {
         Row: {
           computed_at: string
