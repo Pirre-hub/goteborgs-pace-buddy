@@ -82,6 +82,9 @@ export function DailyChoiceCard({
             {optionFor(saved.recommended_type)?.label.toLowerCase()}
           </p>
         )}
+        {saved.actual_choice && (
+          <WorkoutSuggestion type={saved.actual_choice as ChoiceType} />
+        )}
       </div>
     );
   }
