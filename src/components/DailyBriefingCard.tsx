@@ -133,33 +133,8 @@ export function DailyBriefingCard() {
           </div>
         )}
 
-        {today0 && (
-          <div className="rounded-lg border border-strava/40 bg-strava/5 p-3">
-            <div className="text-xs uppercase tracking-wide text-strava font-semibold mb-1">
-              Dagens pass
-            </div>
-            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <div className="font-semibold">{today0.type}</div>
-              {today0.distance_km != null && (
-                <div className="tabular-nums text-sm">
-                  {today0.distance_km} km
-                </div>
-              )}
-              <div className="tabular-nums text-sm text-muted-foreground">
-                {today0.target_pace}
-              </div>
-            </div>
-            {today0.purpose && (
-              <p className="text-sm mt-1">{today0.purpose}</p>
-            )}
-          </div>
-        )}
-
         <CoachChatCard planContext={planContext} />
 
-        <p className="text-sm italic text-muted-foreground pt-1">
-          {motivation(tsb, daysToGoal)}
-        </p>
       </CardContent>
     </Card>
   );
