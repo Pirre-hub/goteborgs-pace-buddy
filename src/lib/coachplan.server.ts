@@ -475,11 +475,24 @@ COACHREGLER:
       ? `IDAG REDAN GENOMFÖRT: ${todayKm.toFixed(1)} km (${todayRuns.length} pass). day_offset 0 MÅSTE markeras som "Genomfört: ${todayKm.toFixed(1)} km" (type) med distance_km=${todayKm.toFixed(1)}, target_pace="–", och purpose som bekräftar passet. Flytta planerad vila/lugnt pass till day_offset 1 (imorgon) istället, och justera resten av veckan därefter så belastningen blir balanserad.`
       : `INGA PASS IDAG ÄNNU: day_offset 0 är fortfarande planerbart.`;
 
+  const todayChoice = (choices ?? []).find((c) => c.date === localTodayStr);
+  const todayChoiceLine = todayChoice?.actual_choice
+    ? `PERS VAL IDAG: "${todayChoice.actual_choice}". day_offset 0 MÅSTE reflektera detta val. Justera resten av veckan så total belastning stämmer.`
+    : "";
+
   const user = `Datum idag: ${today.toISOString().slice(0, 10)}
 
 ${goalLine}
 
+${raceDayLine}
+
 Dagar till lopp: ${Math.max(0, Math.round((new Date((goal?.race_date ?? today) + "T00:00:00").getTime() - Date.now()) / 86400000))}
+
+${todayLine}
+
+${todayChoiceLine}
+
+${latestRunRelative ? `Senaste pass var ${latestRunRelative}.` : ""}
 
 TRÄNINGSBELASTNING:
 
@@ -500,6 +513,7 @@ ${upcomingDates.join("\n")}
 Generera commentary (3–5 meningar, börja med senaste passets datum + tempo) + 14 pass via rolling_plan. Varje purpose ska vara 2–3 meningar som förklarar VARFÖR just detta pass just denna dag, kopplat till ACWR och dagar till lopp.
 
 KONTROLL INNAN DU SVARAR: räkna dina 14 dagar – det MÅSTE finnas exakt 2 gympass (type innehåller "Gym") och max 6 löppass totalt. Resten är vila. Om inte – gör om planen.${deviations.length > 0 ? `\n\nAVVIKELSER SENASTE 14 DAGAR:\n${deviations.join("\n")}` : ""}${consecutiveDeviations >= 3 ? `\n\nVARNING: Atleten har avvikit från rekommendationen ${consecutiveDeviations} dagar i rad. Påtala detta direkt i commentary – fråga om det är skada, trötthet eller motivation och anpassa planen därefter.` : ""}`;
+
 
   const res = await fetch(AI_URL, {
     method: "POST",
