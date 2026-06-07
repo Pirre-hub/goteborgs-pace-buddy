@@ -57,10 +57,8 @@ export function bestRecentPaceSecPerKm(runs: Run[]): {
   const top = candidates.slice(0, Math.min(5, candidates.length));
   const avgPace = top.reduce((s, r) => s + r.pace, 0) / top.length;
   const avgDist = top.reduce((s, r) => s + r.distance_km, 0) / top.length;
-  const projectedHalfMarathonSec = top.reduce(
-    (s, r) => s + r.projectedHalfMarathonSec,
-    0,
-  ) / top.length;
+  const projectedHalfMarathonSec =
+    top.reduce((s, r) => s + r.projectedHalfMarathonSec, 0) / top.length;
   return {
     pace: avgPace,
     distance_km: avgDist,
