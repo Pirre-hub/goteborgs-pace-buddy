@@ -99,19 +99,34 @@ export const sendMessage = createServerFn({ method: "POST" })
           : "⚠ Trött"
         : "";
 
-    // Fetch last 7 days of activities for live context
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    // Fetch detailed activities for last 28 days + aggregate stats for full history
+    const now = new Date();
+    const twentyEightDaysAgo = new Date(now);
+    twentyEightDaysAgo.setDate(twentyEightDaysAgo.getDate() - 28);
+
     const { data: recentActs } = await supabaseAdmin
       .from("strava_activities")
       .select("name, distance, moving_time, average_heartrate, sport_type, start_date_local")
-      .gte("start_date_local", sevenDaysAgo.toISOString())
+      .gte("start_date_local", twentyEightDaysAgo.toISOString())
       .order("start_date_local", { ascending: false })
-      .limit(20);
+      .limit(60);
+
+    // Aggregate stats for full Strava history (all activities)
+    const { data: allActs } = await supabaseAdmin
+      .from("strava_activities")
+      .select("distance, moving_time, sport_type, start_date_local, average_heartrate")
+      .order("start_date_local", { ascending: false });
 
     const weekdayNamesSv = ["söndag", "måndag", "tisdag", "onsdag", "torsdag", "fredag", "lördag"];
-    const now = new Date();
     const todayLabel = `${weekdayNamesSv[now.getDay()]} ${now.toLocaleDateString("sv-SE")}`;
+
+    const fmtPace = (distM: number, secs: number) => {
+      if (!distM) return "–";
+      const sec = secs / (distM / 1000);
+      const m = Math.floor(sec / 60);
+      const s = Math.round(sec % 60);
+      return `${m}:${s.toString().padStart(2, "0")}/km`;
+    };
 
     const recentActsStr = (recentActs ?? []).length
       ? (recentActs ?? [])
@@ -121,19 +136,37 @@ export const sendMessage = createServerFn({ method: "POST" })
             const dateShort = d.toLocaleDateString("sv-SE", { month: "short", day: "numeric" });
             const km = ((a.distance as number) / 1000).toFixed(1);
             const min = Math.round((a.moving_time as number) / 60);
-            const pace = (a.distance as number) > 0
-              ? (() => {
-                  const sec = (a.moving_time as number) / ((a.distance as number) / 1000);
-                  const m = Math.floor(sec / 60);
-                  const s = Math.round(sec % 60);
-                  return `${m}:${s.toString().padStart(2, "0")}/km`;
-                })()
-              : "–";
+            const pace = fmtPace(a.distance as number, a.moving_time as number);
             const hr = a.average_heartrate ? ` ${Math.round(a.average_heartrate as number)}bpm` : "";
             return `- ${day} ${dateShort}: ${a.sport_type} ${km}km, ${min}min, ${pace}${hr} (${a.name})`;
           })
           .join("\n")
-      : "- Inga loggade pass senaste 7 dagarna";
+      : "- Inga loggade pass senaste 28 dagarna";
+
+    // Bucket aggregates: 90 dagar, 365 dagar, total
+    const buckets = [
+      { label: "Senaste 90 dagarna", days: 90 },
+      { label: "Senaste 365 dagarna", days: 365 },
+      { label: "Hela historiken", days: Number.POSITIVE_INFINITY },
+    ];
+    const summarize = (cutoffDays: number) => {
+      const cutoff = cutoffDays === Number.POSITIVE_INFINITY
+        ? new Date(0)
+        : new Date(now.getTime() - cutoffDays * 86400000);
+      const subset = (allActs ?? []).filter(
+        (a) => new Date(a.start_date_local as string) >= cutoff,
+      );
+      const runs = subset.filter((a) => /run/i.test(a.sport_type as string));
+      const totalKm = subset.reduce((s, a) => s + Number(a.distance ?? 0) / 1000, 0);
+      const runKm = runs.reduce((s, a) => s + Number(a.distance ?? 0) / 1000, 0);
+      const runSec = runs.reduce((s, a) => s + Number(a.moving_time ?? 0), 0);
+      const sports = Array.from(new Set(subset.map((a) => a.sport_type))).join(", ");
+      const avgPace = fmtPace(runKm * 1000, runSec);
+      return `${subset.length} pass (${runs.length} löp) • ${totalKm.toFixed(0)} km totalt • löp ${runKm.toFixed(0)} km @ snitt ${avgPace} • sporter: ${sports || "–"}`;
+    };
+    const aggregateStr = buckets
+      .map((b) => `- ${b.label}: ${summarize(b.days)}`)
+      .join("\n");
 
     const liveContext = `═══════════════════════════════════
 AKTUELL KONTEXT (${todayLabel})
@@ -145,12 +178,17 @@ AKTUELL KONTEXT (${todayLabel})
 - Dagar till loppet: ${planContext.daysToRace}
 - Senaste pass: ${planContext.lastRun}
 
-PASS SENASTE 7 DAGARNA (från Strava):
+TRÄNINGSHISTORIK (aggregerad från Strava):
+${aggregateStr}
+
+PASS SENASTE 28 DAGARNA (från Strava):
 ${recentActsStr}
 
 ${planContext.recentDeviations ? `Avvikelser från plan: ${planContext.recentDeviations}` : ""}
 
 `;
+
+
 
     const system = liveContext + `Du är Pirrecoachen – en personlig tränings- och löpcoach för Per, 64 år. Du kombinerar vetenskaplig träningslära med praktisk erfarenhet och anpassar alltid dina råd till Pers faktiska data.
 
