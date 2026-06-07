@@ -96,9 +96,23 @@ export function CoachChatCard({ planContext }: { planContext: PlanContext }) {
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center justify-between">
           <span>💬 Prata med coachen</span>
-          <span className="text-xs font-normal text-muted-foreground">
-            {format(new Date(), "d MMM", { locale: sv })}
-          </span>
+          <div className="flex items-center gap-2">
+            {messages.length > 0 && (
+              <button
+                onClick={() => clearMut.mutate()}
+                disabled={clearMut.isPending}
+                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors"
+                aria-label="Rensa konversation"
+                title="Rensa konversation"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Rensa
+              </button>
+            )}
+            <span className="text-xs font-normal text-muted-foreground">
+              {format(new Date(), "d MMM", { locale: sv })}
+            </span>
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
