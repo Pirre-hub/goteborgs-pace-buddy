@@ -4,10 +4,10 @@ import { useServerFn } from "@tanstack/react-start";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Send } from "lucide-react";
+import { Send, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { sv } from "date-fns/locale";
-import { getTodayConversation, sendMessage } from "@/lib/coachchat.functions";
+import { getTodayConversation, sendMessage, clearTodayConversation } from "@/lib/coachchat.functions";
 import { toast } from "sonner";
 
 type PlanContext = {
@@ -32,6 +32,7 @@ export function CoachChatCard({ planContext }: { planContext: PlanContext }) {
   const qc = useQueryClient();
   const fetchConv = useServerFn(getTodayConversation);
   const sendFn = useServerFn(sendMessage);
+  const clearFn = useServerFn(clearTodayConversation);
   const [input, setInput] = useState("");
   const [pendingUser, setPendingUser] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -62,6 +63,16 @@ export function CoachChatCard({ planContext }: { planContext: PlanContext }) {
     },
   });
 
+  const clearMut = useMutation({
+    mutationFn: () => clearFn(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["coach-chat-today"] });
+      qc.invalidateQueries({ queryKey: ["recent-choices"] });
+      toast.success("Konversationen rensad");
+    },
+    onError: () => toast.error("Kunde inte rensa konversationen"),
+  });
+
   const messages: Msg[] = (convQ.data?.messages ?? []) as Msg[];
   const showQuick = messages.length === 0 && !pendingUser;
 
@@ -85,9 +96,23 @@ export function CoachChatCard({ planContext }: { planContext: PlanContext }) {
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center justify-between">
           <span>💬 Prata med coachen</span>
-          <span className="text-xs font-normal text-muted-foreground">
-            {format(new Date(), "d MMM", { locale: sv })}
-          </span>
+          <div className="flex items-center gap-2">
+            {messages.length > 0 && (
+              <button
+                onClick={() => clearMut.mutate()}
+                disabled={clearMut.isPending}
+                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors"
+                aria-label="Rensa konversation"
+                title="Rensa konversation"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Rensa
+              </button>
+            )}
+            <span className="text-xs font-normal text-muted-foreground">
+              {format(new Date(), "d MMM", { locale: sv })}
+            </span>
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
