@@ -43,8 +43,9 @@ export function BenchmarkCard({ runs: _fallback }: { runs: Run[] }) {
 
   const best = bestRecentPaceSecPerKm(runs);
 
-  // Use actual best pace projected to 21.1 km for age-grading
-  const estimatedFinishSec = best ? Math.round(best.pace * 21.1) : null;
+  const estimatedFinishSec = best
+    ? Math.round(best.projectedHalfMarathonSec)
+    : null;
   const ag = estimatedFinishSec
     ? calcAgeGrade(estimatedFinishSec, PROFILE.age)
     : null;
@@ -71,21 +72,21 @@ export function BenchmarkCard({ runs: _fallback }: { runs: Run[] }) {
             { label: "50–60", bg: "bg-amber-200/60", tier: "Above avg" },
             { label: "60–70", bg: "bg-emerald-200/60", tier: "Local" },
             { label: "70–80", bg: "bg-lime-200/60", tier: "Regional" },
-            { label: "80–90", bg: "bg-sky-200/60", tier: "National" },
-            { label: "90+", bg: "bg-pink-200/60", tier: "World" },
+            { label: "80–90", bg: "bg-sky-200/60", tier: "Mycket hög" },
+            { label: "90+", bg: "bg-pink-200/60", tier: "Toppnivå" },
           ];
           const p = ag.percent;
           let nextLabel = "";
           let nextThreshold = 0;
-          if (p < 50) { nextLabel = "Above average"; nextThreshold = 50; }
-          else if (p < 60) { nextLabel = "Local class"; nextThreshold = 60; }
-          else if (p < 70) { nextLabel = "Regional class"; nextThreshold = 70; }
-          else if (p < 80) { nextLabel = "National class"; nextThreshold = 80; }
-          else if (p < 90) { nextLabel = "World class"; nextThreshold = 90; }
+          if (p < 50) { nextLabel = "Över medel"; nextThreshold = 50; }
+          else if (p < 60) { nextLabel = "Bra motionsnivå"; nextThreshold = 60; }
+          else if (p < 70) { nextLabel = "Stark nivå"; nextThreshold = 70; }
+          else if (p < 80) { nextLabel = "Mycket hög nivå"; nextThreshold = 80; }
+          else if (p < 90) { nextLabel = "Exceptionellt hög nivå"; nextThreshold = 90; }
           const atTop = p >= 90;
           const nextSentence = atTop
-            ? "Du är i världseliten."
-            : `Bättre än de flesta aktiva motionslöpare i din åldersgrupp. Nästa nivå: ${nextLabel} vid ${nextThreshold}%.`;
+            ? "En exceptionellt hög åldersgradering baserad på din bästa projektion."
+            : `Jämfört med ålderskorrigerad rekordstandard. Nästa nivå: ${nextLabel} vid ${nextThreshold}%.`;
           // Map percent to bar position: segments are [0–50, 50–60, 60–70, 70–80, 80–90, 90–100]
           // Each segment is 1/6 of bar width regardless of value range.
           const segWidth = 100 / 6;
@@ -172,7 +173,7 @@ export function BenchmarkCard({ runs: _fallback }: { runs: Run[] }) {
                   </div>
                   {atTop ? (
                     <>
-                      <div className="mt-1 text-lg font-semibold">Världselit uppnådd</div>
+                      <div className="mt-1 text-lg font-semibold">Exceptionell nivå</div>
                       <div className="text-[11px] text-muted-foreground">90%+</div>
                     </>
                   ) : (
