@@ -235,10 +235,10 @@ export async function generatePlan(): Promise<CoachPlan> {
     supabaseAdmin
       .from("strava_activities")
       .select(
-        "start_date_local, distance, moving_time, average_heartrate, name",
+        "id, name, type, start_date_local, distance, moving_time, average_heartrate, splits",
       )
       .order("start_date_local", { ascending: false })
-      .limit(40),
+      .limit(200),
     supabaseAdmin
       .from("daily_choices")
       .select("date, recommended_type, actual_choice")
