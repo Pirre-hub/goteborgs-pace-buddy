@@ -1,6 +1,7 @@
 // ACWR coach + 14-day rolling plan
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { backfillRecentRuns } from "./strava.server";
+import { personalizePrompt } from "./athlete";
 
 const AI_URL = "https://api.anthropic.com/v1/messages";
 const AI_MODEL = "claude-sonnet-4-6";
@@ -638,8 +639,8 @@ KONTROLL INNAN DU SVARAR: räkna dina 14 dagar – det MÅSTE finnas exakt 2 gym
     body: JSON.stringify({
       model: AI_MODEL,
       max_tokens: 8192,
-      system,
-      messages: [{ role: "user", content: user }],
+      system: personalizePrompt(system),
+      messages: [{ role: "user", content: personalizePrompt(user) }],
       tools: [TOOL],
       tool_choice: { type: "tool", name: "rolling_plan" },
     }),

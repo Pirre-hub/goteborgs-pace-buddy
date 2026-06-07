@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { generatePlan } from "./coachplan.server";
+import { personalizePrompt } from "./athlete";
 
 type Message = { role: "user" | "coach"; content: string };
 
