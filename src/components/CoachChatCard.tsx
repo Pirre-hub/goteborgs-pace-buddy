@@ -32,6 +32,7 @@ export function CoachChatCard({ planContext }: { planContext: PlanContext }) {
   const qc = useQueryClient();
   const fetchConv = useServerFn(getTodayConversation);
   const sendFn = useServerFn(sendMessage);
+  const clearFn = useServerFn(clearTodayConversation);
   const [input, setInput] = useState("");
   const [pendingUser, setPendingUser] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
