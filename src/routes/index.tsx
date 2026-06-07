@@ -13,7 +13,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { WeatherStrip } from "@/components/WeatherStrip";
 import { CoachPlanCard } from "@/components/CoachPlanCard";
-import { BenchmarkCard } from "@/components/BenchmarkCard";
 import { TrainingLoadCard } from "@/components/TrainingLoadCard";
 import { DailyBriefingCard } from "@/components/DailyBriefingCard";
 import { Settings as SettingsIcon } from "lucide-react";
@@ -326,8 +325,6 @@ function Dashboard() {
             <WeatherStrip />
 
             <CoachPlanCard />
-
-            <BenchmarkCard runs={runs} />
 
             <TrainingLoadCard />
 
