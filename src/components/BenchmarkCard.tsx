@@ -29,7 +29,9 @@ function formatTime(sec: number) {
   const h = Math.floor(sec / 3600);
   const m = Math.floor((sec % 3600) / 60);
   const s = sec % 60;
-  return h > 0 ? `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}` : `${m}:${s.toString().padStart(2, "0")}`;
+  return h > 0
+    ? `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`
+    : `${m}:${s.toString().padStart(2, "0")}`;
 }
 
 function getNextLevel(percent: number) {
@@ -86,98 +88,88 @@ export function BenchmarkCard({ runs: _fallback }: { runs: Run[] }) {
             Behöver fler löppass i Strava-historiken för att beräkna åldersgradering.
           </p>
         ) : (
-            <div className="space-y-5">
-              {/* Runner track */}
-              <div className="pt-12 pb-1">
-                <div className="relative">
-                  {/* Pin */}
-                  <div
-                    className="absolute -top-12 flex flex-col items-center"
-                    style={{ left: `${pinLeft}%`, transform: "translateX(-50%)" }}
-                  >
-                    <div className="max-w-[40vw] truncate rounded-md bg-strava px-2 py-0.5 text-[11px] font-medium text-white whitespace-nowrap shadow">
-                      Pirren · {p.toFixed(1)}%
+          <div className="space-y-5">
+            <div className="pt-12 pb-1">
+              <div className="relative">
+                <div
+                  className="absolute -top-12 flex flex-col items-center"
+                  style={{ left: `${pinLeft}%`, transform: "translateX(-50%)" }}
+                >
+                  <div className="max-w-[40vw] truncate rounded-md bg-strava px-2 py-0.5 text-[11px] font-medium text-white whitespace-nowrap shadow">
+                    Pirren · {p.toFixed(1)}%
+                  </div>
+                  <div className="h-1 w-px bg-strava" />
+                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-strava text-white shadow">
+                    <Footprints className="h-4 w-4" />
+                  </div>
+                </div>
+
+                <div className="flex h-7 w-full overflow-hidden rounded-md border">
+                  {SEGMENTS.map((s) => (
+                    <div
+                      key={s.label}
+                      className={`flex-1 ${s.bg} flex items-center justify-center text-[10px] font-medium text-foreground/70 border-r last:border-r-0`}
+                    >
+                      {s.label}
                     </div>
-                    <div className="h-1 w-px bg-strava" />
-                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-strava text-white shadow">
-                      <Footprints className="h-4 w-4" />
+                  ))}
+                </div>
+
+                <div className="mt-1 flex w-full">
+                  {SEGMENTS.map((s) => (
+                    <div
+                      key={s.tier}
+                      className="flex-1 text-center text-[10px] text-muted-foreground"
+                    >
+                      {s.tier}
                     </div>
-                  </div>
-
-                  {/* Segmented bar */}
-                  <div className="flex h-7 w-full overflow-hidden rounded-md border">
-                    {SEGMENTS.map((s) => (
-                      <div
-                        key={s.label}
-                        className={`flex-1 ${s.bg} flex items-center justify-center text-[10px] font-medium text-foreground/70 border-r last:border-r-0`}
-                      >
-                        {s.label}
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Tier labels */}
-                  <div className="mt-1 flex w-full">
-                    {SEGMENTS.map((s) => (
-                      <div
-                        key={s.tier}
-                        className="flex-1 text-center text-[10px] text-muted-foreground"
-                      >
-                        {s.tier}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Main row */}
-              <div className="flex items-center gap-4 rounded-lg bg-muted/60 p-4">
-                <div className="text-strava font-semibold tabular-nums leading-none" style={{ fontSize: "56px" }}>
-                  {p.toFixed(1)}%
-                </div>
-                <div className="flex-1">
-                  <div className="font-bold">{ag.tier}</div>
-                  <div className="mt-1 text-xs text-muted-foreground">
-                    {nextSentence}
-                  </div>
-                </div>
-              </div>
-
-              {/* Fact row */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-lg bg-muted/60 p-3">
-                  <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                    Öppet lopp (25-åring)
-                  </div>
-                  <div className="mt-1 text-lg font-semibold tabular-nums">
-                    {formatTime(ag.ageGradedTimeSec)}
-                  </div>
-                  <div className="text-[11px] text-muted-foreground">
-                    Din ålderskorrigerade tid
-                  </div>
-                </div>
-                <div className="rounded-lg bg-muted/60 p-3">
-                  <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                    Till nästa nivå
-                  </div>
-                  {atTop ? (
-                    <>
-                      <div className="mt-1 text-lg font-semibold">Exceptionell nivå</div>
-                      <div className="text-[11px] text-muted-foreground">90%+</div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="mt-1 text-lg font-semibold tabular-nums">
-                        {(nextLevel.threshold - p).toFixed(1)}%
-                      </div>
-                      <div className="text-[11px] text-muted-foreground">
-                        {nextLevel.label} vid {nextLevel.threshold}%
-                      </div>
-                    </>
-                  )}
+                  ))}
                 </div>
               </div>
             </div>
+
+            <div className="flex items-center gap-4 rounded-lg bg-muted/60 p-4">
+              <div className="text-strava font-semibold tabular-nums leading-none" style={{ fontSize: "56px" }}>
+                {p.toFixed(1)}%
+              </div>
+              <div className="flex-1">
+                <div className="font-bold">{ag.tier}</div>
+                <div className="mt-1 text-xs text-muted-foreground">{nextSentence}</div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg bg-muted/60 p-3">
+                <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  Öppet lopp (25-åring)
+                </div>
+                <div className="mt-1 text-lg font-semibold tabular-nums">
+                  {formatTime(ag.ageGradedTimeSec)}
+                </div>
+                <div className="text-[11px] text-muted-foreground">Din ålderskorrigerade tid</div>
+              </div>
+              <div className="rounded-lg bg-muted/60 p-3">
+                <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  Till nästa nivå
+                </div>
+                {atTop ? (
+                  <>
+                    <div className="mt-1 text-lg font-semibold">Exceptionell nivå</div>
+                    <div className="text-[11px] text-muted-foreground">90%+</div>
+                  </>
+                ) : (
+                  <>
+                    <div className="mt-1 text-lg font-semibold tabular-nums">
+                      {(nextLevel.threshold - p).toFixed(1)}%
+                    </div>
+                    <div className="text-[11px] text-muted-foreground">
+                      {nextLevel.label} vid {nextLevel.threshold}%
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
         )}
       </CardContent>
     </Card>
