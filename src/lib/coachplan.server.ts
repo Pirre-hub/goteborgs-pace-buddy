@@ -311,6 +311,43 @@ export async function generatePlan(): Promise<CoachPlan> {
     })
     .join("\n");
 
+  // Build splits summary for last running activities with splits data
+  type SplitRow = {
+    split: number;
+    distance: number;
+    moving_time: number;
+    average_speed: number;
+    average_heartrate?: number;
+  };
+  const runsWithSplits = runs
+    .filter((r) => {
+      const cat = ["Run", "TrailRun", "VirtualRun"].includes(r.type ?? "");
+      const splits = r.splits as SplitRow[] | null;
+      return cat && Array.isArray(splits) && splits.length > 0;
+    })
+    .slice(0, 3);
+
+  const splitsLines = runsWithSplits
+    .map((r) => {
+      const splits = (r.splits as SplitRow[]) ?? [];
+      const distKm = (r.distance / 1000).toFixed(1);
+      const date = r.start_date_local.slice(0, 10);
+      const name = r.name ?? "Pass";
+      const splitDetail = splits
+        .map((s) => {
+          const splitPaceSec = s.moving_time / (s.distance / 1000);
+          const pm = Math.floor(splitPaceSec / 60);
+          const ps = Math.round(splitPaceSec % 60).toString().padStart(2, "0");
+          const hr = s.average_heartrate
+            ? ` (${Math.round(s.average_heartrate)}bpm)`
+            : "";
+          return `    km${s.split}: ${pm}:${ps}/km${hr}`;
+        })
+        .join("\n");
+      return `${date} – ${name} (${distKm}km):\n${splitDetail}`;
+    })
+    .join("\n\n");
+
   const latestRun = runs[0] ?? null;
   const based_on_run = latestRun
     ? {
