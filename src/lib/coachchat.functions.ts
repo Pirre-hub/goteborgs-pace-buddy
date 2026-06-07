@@ -99,7 +99,60 @@ export const sendMessage = createServerFn({ method: "POST" })
           : "⚠ Trött"
         : "";
 
-    const system = `Du är Pirrecoachen – en personlig tränings- och löpcoach för Per, 64 år. Du kombinerar vetenskaplig träningslära med praktisk erfarenhet och anpassar alltid dina råd till Pers faktiska data.
+    // Fetch last 7 days of activities for live context
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const { data: recentActs } = await supabaseAdmin
+      .from("strava_activities")
+      .select("name, distance, moving_time, average_heartrate, sport_type, start_date_local")
+      .gte("start_date_local", sevenDaysAgo.toISOString())
+      .order("start_date_local", { ascending: false })
+      .limit(20);
+
+    const weekdayNamesSv = ["söndag", "måndag", "tisdag", "onsdag", "torsdag", "fredag", "lördag"];
+    const now = new Date();
+    const todayLabel = `${weekdayNamesSv[now.getDay()]} ${now.toLocaleDateString("sv-SE")}`;
+
+    const recentActsStr = (recentActs ?? []).length
+      ? (recentActs ?? [])
+          .map((a) => {
+            const d = new Date(a.start_date_local as string);
+            const day = weekdayNamesSv[d.getDay()];
+            const dateShort = d.toLocaleDateString("sv-SE", { month: "short", day: "numeric" });
+            const km = ((a.distance as number) / 1000).toFixed(1);
+            const min = Math.round((a.moving_time as number) / 60);
+            const pace = (a.distance as number) > 0
+              ? (() => {
+                  const sec = (a.moving_time as number) / ((a.distance as number) / 1000);
+                  const m = Math.floor(sec / 60);
+                  const s = Math.round(sec % 60);
+                  return `${m}:${s.toString().padStart(2, "0")}/km`;
+                })()
+              : "–";
+            const hr = a.average_heartrate ? ` ${Math.round(a.average_heartrate as number)}bpm` : "";
+            return `- ${day} ${dateShort}: ${a.sport_type} ${km}km, ${min}min, ${pace}${hr} (${a.name})`;
+          })
+          .join("\n")
+      : "- Inga loggade pass senaste 7 dagarna";
+
+    const liveContext = `═══════════════════════════════════
+AKTUELL KONTEXT (${todayLabel})
+═══════════════════════════════════
+
+- Idag är ${todayLabel}
+- Dagens rekommendation: ${planContext.todayPlan}
+- ACWR: ${planContext.acwr ?? "–"} | TSB: ${planContext.tsb ?? "–"} ${tsbLabel}
+- Dagar till loppet: ${planContext.daysToRace}
+- Senaste pass: ${planContext.lastRun}
+
+PASS SENASTE 7 DAGARNA (från Strava):
+${recentActsStr}
+
+${planContext.recentDeviations ? `Avvikelser från plan: ${planContext.recentDeviations}` : ""}
+
+`;
+
+    const system = liveContext + `Du är Pirrecoachen – en personlig tränings- och löpcoach för Per, 64 år. Du kombinerar vetenskaplig träningslära med praktisk erfarenhet och anpassar alltid dina råd till Pers faktiska data.
 
 ═══════════════════════════════════
 
