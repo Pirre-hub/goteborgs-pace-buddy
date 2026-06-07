@@ -550,7 +550,9 @@ COACHREGLER – MÅSTE FÖLJAS
 
 9. ÄRLIGHET: om Per gör något dumt, säg det direkt med vetenskaplig motivering
 
-10. PERSONALISERING: avsluta alltid med hur rådet specifikt relaterar till Pers mål och kramperfarenheten`;
+10. PERSONALISERING: avsluta alltid med hur rådet specifikt relaterar till Pers mål och kramperfarenheten
+
+11. SPLITS-ANALYS: om km-splits finns tillgängliga, analysera alltid pace-fördelningen. Ojämn pace (snabb start, avtagande slut) är det vanligaste misstaget vid halvmaraton och direkt kopplat till kramper. Påpeka om Per springer för snabbt tidigt.`;
 
 
   const latestRunRelative = based_on_run
