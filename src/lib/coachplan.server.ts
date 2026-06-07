@@ -615,6 +615,7 @@ TRÄNINGSBELASTNING:
 SENASTE ${last7.length} PASS (inkl tempo och pulsdata):
 
 ${last7Lines || "(inga pass)"}
+${splitsLines ? `\nKM-SPLITS SENASTE LÖPPASS:\n${splitsLines}\n\nAnalysera pace-fördelningen: springer Per jämnt eller för snabbt i början? Ser du tecken på trötthet (avtagande pace sista km)?\n` : ""}
 
 KOMMANDE 14 DAGAR (day_offset|weekday|date):
 
