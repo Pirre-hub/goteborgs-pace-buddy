@@ -329,3 +329,15 @@ COACHREGLER – MÅSTE FÖLJAS
     return { response: cleanResponse, triggersReplan };
   });
 
+export const clearTodayConversation = createServerFn({ method: "POST" }).handler(
+  async () => {
+    const dateStr = todayStr();
+    const { error } = await supabaseAdmin
+      .from("coach_conversations")
+      .delete()
+      .eq("date", dateStr);
+    if (error) throw new Error(error.message);
+    return { cleared: true };
+  },
+);
+
