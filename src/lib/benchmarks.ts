@@ -1,9 +1,11 @@
-// User profile
+// User profile — kanonisk källa: src/lib/athlete.ts
+import { ATHLETE } from "./athlete";
+
 export const PROFILE = {
-  age: 64,
-  sex: "male" as const,
-  weight_kg: 74,
-  height_cm: 180,
+  age: ATHLETE.age,
+  sex: ATHLETE.sex,
+  weight_kg: ATHLETE.weightKg,
+  height_cm: ATHLETE.heightCm,
 };
 
 type Run = {
