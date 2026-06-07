@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Send, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { sv } from "date-fns/locale";
-import { getTodayConversation, sendMessage } from "@/lib/coachchat.functions";
+import { getTodayConversation, sendMessage, clearTodayConversation } from "@/lib/coachchat.functions";
 import { toast } from "sonner";
 
 type PlanContext = {
