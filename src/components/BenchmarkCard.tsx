@@ -38,17 +38,12 @@ export function BenchmarkCard({ runs: _fallback }: { runs: Run[] }) {
     queryFn: () => listFn({ data: { limit: 5000 } }),
     staleTime: 5 * 60 * 1000,
   });
-  const runs: Run[] =
-    (allQuery.data?.activities as Run[] | undefined) ?? _fallback;
+  const runs: Run[] = (allQuery.data?.activities as Run[] | undefined) ?? _fallback;
 
   const best = bestRecentPaceSecPerKm(runs);
 
-  const estimatedFinishSec = best
-    ? Math.round(best.projectedHalfMarathonSec)
-    : null;
-  const ag = estimatedFinishSec
-    ? calcAgeGrade(estimatedFinishSec, PROFILE.age)
-    : null;
+  const estimatedFinishSec = best ? Math.round(best.projectedHalfMarathonSec) : null;
+  const ag = estimatedFinishSec ? calcAgeGrade(estimatedFinishSec, PROFILE.age) : null;
 
   const colors = ag ? TONE_COLORS[ag.tone] : TONE_COLORS.below;
   const widthPct = ag ? Math.max(0, Math.min(100, ag.percent)) : 0;
@@ -66,35 +61,47 @@ export function BenchmarkCard({ runs: _fallback }: { runs: Run[] }) {
           <p className="text-sm text-muted-foreground">
             Behöver fler löppass i Strava-historiken för att beräkna åldersgradering.
           </p>
-        ) : (() => {
-          const segments = [
-            { label: "Under 50", bg: "bg-purple-200/60", tier: "Average" },
-            { label: "50–60", bg: "bg-amber-200/60", tier: "Above avg" },
-            { label: "60–70", bg: "bg-emerald-200/60", tier: "Local" },
-            { label: "70–80", bg: "bg-lime-200/60", tier: "Regional" },
-            { label: "80–90", bg: "bg-sky-200/60", tier: "Mycket hög" },
-            { label: "90+", bg: "bg-pink-200/60", tier: "Toppnivå" },
-          ];
-          const p = ag.percent;
-          let nextLabel = "";
-          let nextThreshold = 0;
-          if (p < 50) { nextLabel = "Över medel"; nextThreshold = 50; }
-          else if (p < 60) { nextLabel = "Bra motionsnivå"; nextThreshold = 60; }
-          else if (p < 70) { nextLabel = "Stark nivå"; nextThreshold = 70; }
-          else if (p < 80) { nextLabel = "Mycket hög nivå"; nextThreshold = 80; }
-          else if (p < 90) { nextLabel = "Exceptionellt hög nivå"; nextThreshold = 90; }
-          const atTop = p >= 90;
-          const nextSentence = atTop
-            ? "En exceptionellt hög åldersgradering baserad på din bästa projektion."
-            : `Jämfört med ålderskorrigerad rekordstandard. Nästa nivå: ${nextLabel} vid ${nextThreshold}%.`;
-          // Map percent to bar position: segments are [0–50, 50–60, 60–70, 70–80, 80–90, 90–100]
-          // Each segment is 1/6 of bar width regardless of value range.
-          const segWidth = 100 / 6;
-          let posPct: number;
-          if (p < 50) posPct = (p / 50) * segWidth;
-          else if (p >= 90) posPct = 5 * segWidth + Math.min((p - 90) / 10, 1) * segWidth;
-          else posPct = segWidth + ((p - 50) / 10) * segWidth;
-          const pinLeft = Math.max(2, Math.min(posPct, 98));
+        ) : (
+          (() => {
+            const segments = [
+              { label: "Under 50", bg: "bg-purple-200/60", tier: "Average" },
+              { label: "50–60", bg: "bg-amber-200/60", tier: "Above avg" },
+              { label: "60–70", bg: "bg-emerald-200/60", tier: "Local" },
+              { label: "70–80", bg: "bg-lime-200/60", tier: "Regional" },
+              { label: "80–90", bg: "bg-sky-200/60", tier: "Mycket hög" },
+              { label: "90+", bg: "bg-pink-200/60", tier: "Toppnivå" },
+            ];
+            const p = ag.percent;
+            let nextLabel = "";
+            let nextThreshold = 0;
+            if (p < 50) {
+              nextLabel = "Över medel";
+              nextThreshold = 50;
+            } else if (p < 60) {
+              nextLabel = "Bra motionsnivå";
+              nextThreshold = 60;
+            } else if (p < 70) {
+              nextLabel = "Stark nivå";
+              nextThreshold = 70;
+            } else if (p < 80) {
+              nextLabel = "Mycket hög nivå";
+              nextThreshold = 80;
+            } else if (p < 90) {
+              nextLabel = "Exceptionellt hög nivå";
+              nextThreshold = 90;
+            }
+            const atTop = p >= 90;
+            const nextSentence = atTop
+              ? "En exceptionellt hög åldersgradering baserad på din bästa projektion."
+              : `Jämfört med ålderskorrigerad rekordstandard. Nästa nivå: ${nextLabel} vid ${nextThreshold}%.`;
+            // Map percent to bar position: segments are [0–50, 50–60, 60–70, 70–80, 80–90, 90–100]
+            // Each segment is 1/6 of bar width regardless of value range.
+            const segWidth = 100 / 6;
+            let posPct: number;
+            if (p < 50) posPct = (p / 50) * segWidth;
+            else if (p >= 90) posPct = 5 * segWidth + Math.min((p - 90) / 10, 1) * segWidth;
+            else posPct = segWidth + ((p - 50) / 10) * segWidth;
+            const pinLeft = Math.max(2, Math.min(posPct, 98));
 
           return (
             <div className="space-y-5">
