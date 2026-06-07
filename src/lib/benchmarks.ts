@@ -57,7 +57,10 @@ export function bestRecentPaceSecPerKm(runs: Run[]): {
   const top = candidates.slice(0, Math.min(5, candidates.length));
   const avgPace = top.reduce((s, r) => s + r.pace, 0) / top.length;
   const avgDist = top.reduce((s, r) => s + r.distance_km, 0) / top.length;
-  const projectedHalfMarathonSec = top.reduce((s, r) => s + r.projectedHalfMarathonSec, 0) / top.length;
+  const projectedHalfMarathonSec = top.reduce(
+    (s, r) => s + r.projectedHalfMarathonSec,
+    0,
+  ) / top.length;
   return {
     pace: avgPace,
     distance_km: avgDist,
@@ -69,13 +72,28 @@ export function bestRecentPaceSecPerKm(runs: Run[]): {
 
 // WMA 2023 age factors – men, half marathon
 const HM_AGE_FACTORS: Record<number, number> = {
-  55: 0.8213, 56: 0.8153, 57: 0.8093, 58: 0.8033, 59: 0.7973,
-  60: 0.7913, 61: 0.7853, 62: 0.7793, 63: 0.7733, 64: 0.7673,
-  65: 0.7613, 66: 0.7553, 67: 0.7493, 68: 0.7433, 69: 0.7373,
+  55: 0.8213,
+  56: 0.8153,
+  57: 0.8093,
+  58: 0.8033,
+  59: 0.7973,
+  60: 0.7913,
+  61: 0.7853,
+  62: 0.7793,
+  63: 0.7733,
+  64: 0.7673,
+  65: 0.7613,
+  66: 0.7553,
+  67: 0.7493,
+  68: 0.7433,
+  69: 0.7373,
 };
 const HM_WORLD_RECORD_SEC = 3723; // 57:31, Kibel 2024
 
-export function calcAgeGrade(finishTimeSec: number, age: number): {
+export function calcAgeGrade(
+  finishTimeSec: number,
+  age: number,
+): {
   percent: number;
   ageGradedTimeSec: number;
   tier: string;
@@ -87,23 +105,41 @@ export function calcAgeGrade(finishTimeSec: number, age: number): {
   const ageGradedTimeSec = Math.round(finishTimeSec * factor);
   let tier = "Average/below";
   let tone: "excellent" | "good" | "average" | "below" = "below";
-  if (percent >= 90) { tier = "Exceptionellt hög nivå"; tone = "excellent"; }
-  else if (percent >= 80) { tier = "Mycket hög nivå"; tone = "excellent"; }
-  else if (percent >= 70) { tier = "Stark nivå"; tone = "good"; }
-  else if (percent >= 60) { tier = "Bra motionsnivå"; tone = "good"; }
-  else if (percent >= 50) { tier = "Över medel"; tone = "average"; }
+  if (percent >= 90) {
+    tier = "Exceptionellt hög nivå";
+    tone = "excellent";
+  } else if (percent >= 80) {
+    tier = "Mycket hög nivå";
+    tone = "excellent";
+  } else if (percent >= 70) {
+    tier = "Stark nivå";
+    tone = "good";
+  } else if (percent >= 60) {
+    tier = "Bra motionsnivå";
+    tone = "good";
+  } else if (percent >= 50) {
+    tier = "Över medel";
+    tone = "average";
+  }
   return { percent, ageGradedTimeSec, tier, tone };
 }
 
 // Keep these exports so nothing else breaks
 export type Bench = {
-  value: number; label: string; percentileText: string;
-  tone: "excellent" | "good" | "average" | "below"; referenceLabel: string;
+  value: number;
+  label: string;
+  percentileText: string;
+  tone: "excellent" | "good" | "average" | "below";
+  referenceLabel: string;
 };
-export function estimateHRmax(age: number) { return Math.round(211 - 0.64 * age); }
+export function estimateHRmax(age: number) {
+  return Math.round(211 - 0.64 * age);
+}
 export function lowestEasyHR(runs: Run[]): number | null {
-  const easy = runs.filter((r) => r.average_heartrate && r.distance >= 4000)
-    .map((r) => Number(r.average_heartrate)).sort((a, b) => a - b);
+  const easy = runs
+    .filter((r) => r.average_heartrate && r.distance >= 4000)
+    .map((r) => Number(r.average_heartrate))
+    .sort((a, b) => a - b);
   if (!easy.length) return null;
   const top = easy.slice(0, Math.min(5, easy.length));
   return top.reduce((s, v) => s + v, 0) / top.length;
