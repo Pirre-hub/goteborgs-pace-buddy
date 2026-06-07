@@ -129,7 +129,10 @@ export function BenchmarkCard({ runs: _fallback }: { runs: Run[] }) {
             </div>
 
             <div className="flex items-center gap-4 rounded-lg bg-muted/60 p-4">
-              <div className="text-strava font-semibold tabular-nums leading-none" style={{ fontSize: "56px" }}>
+              <div
+                className="text-strava font-semibold tabular-nums leading-none"
+                style={{ fontSize: "56px" }}
+              >
                 {p.toFixed(1)}%
               </div>
               <div className="flex-1">
