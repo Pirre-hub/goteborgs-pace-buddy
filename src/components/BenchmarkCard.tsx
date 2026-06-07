@@ -1,7 +1,8 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trophy, Footprints } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { Footprints, Trophy } from "lucide-react";
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { stravaListCached } from "@/lib/strava.functions";
 import { PROFILE, bestRecentPaceSecPerKm, calcAgeGrade } from "@/lib/benchmarks";
 
@@ -15,21 +16,39 @@ type Run = {
   raw?: unknown;
 };
 
+const SEGMENTS = [
+  { label: "Under 50", bg: "bg-purple-200/60", tier: "Medel" },
+  { label: "50–60", bg: "bg-amber-200/60", tier: "Över medel" },
+  { label: "60–70", bg: "bg-emerald-200/60", tier: "Bra" },
+  { label: "70–80", bg: "bg-lime-200/60", tier: "Stark" },
+  { label: "80–90", bg: "bg-sky-200/60", tier: "Mycket hög" },
+  { label: "90+", bg: "bg-pink-200/60", tier: "Toppnivå" },
+];
+
 function formatTime(sec: number) {
   const h = Math.floor(sec / 3600);
   const m = Math.floor((sec % 3600) / 60);
   const s = sec % 60;
-  return h > 0
-    ? `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`
-    : `${m}:${s.toString().padStart(2, "0")}`;
+  return h > 0 ? `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}` : `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-const TONE_COLORS = {
-  excellent: { bar: "#FC4C02", text: "text-strava" },
-  good: { bar: "#10b981", text: "text-emerald-500" },
-  average: { bar: "#f59e0b", text: "text-amber-500" },
-  below: { bar: "#9ca3af", text: "text-muted-foreground" },
-};
+function getNextLevel(percent: number) {
+  if (percent < 50) return { label: "Över medel", threshold: 50 };
+  if (percent < 60) return { label: "Bra motionsnivå", threshold: 60 };
+  if (percent < 70) return { label: "Stark nivå", threshold: 70 };
+  if (percent < 80) return { label: "Mycket hög nivå", threshold: 80 };
+  if (percent < 90) return { label: "Exceptionellt hög nivå", threshold: 90 };
+  return { label: "Exceptionell nivå", threshold: 90 };
+}
+
+function getPinLeft(percent: number) {
+  const segWidth = 100 / 6;
+  let posPct: number;
+  if (percent < 50) posPct = (percent / 50) * segWidth;
+  else if (percent >= 90) posPct = 5 * segWidth + Math.min((percent - 90) / 10, 1) * segWidth;
+  else posPct = segWidth + ((percent - 50) / 10) * segWidth;
+  return Math.max(2, Math.min(posPct, 98));
+}
 
 export function BenchmarkCard({ runs: _fallback }: { runs: Run[] }) {
   const listFn = useServerFn(stravaListCached);
@@ -45,8 +64,13 @@ export function BenchmarkCard({ runs: _fallback }: { runs: Run[] }) {
   const estimatedFinishSec = best ? Math.round(best.projectedHalfMarathonSec) : null;
   const ag = estimatedFinishSec ? calcAgeGrade(estimatedFinishSec, PROFILE.age) : null;
 
-  const colors = ag ? TONE_COLORS[ag.tone] : TONE_COLORS.below;
-  const widthPct = ag ? Math.max(0, Math.min(100, ag.percent)) : 0;
+  const p = ag?.percent ?? 0;
+  const atTop = p >= 90;
+  const nextLevel = getNextLevel(p);
+  const pinLeft = getPinLeft(p);
+  const nextSentence = atTop
+    ? "En exceptionellt hög åldersgradering baserad på din bästa projektion."
+    : `Jämfört med ålderskorrigerad rekordstandard. Nästa nivå: ${nextLevel.label} vid ${nextLevel.threshold}%.`;
 
   return (
     <Card>
@@ -62,48 +86,6 @@ export function BenchmarkCard({ runs: _fallback }: { runs: Run[] }) {
             Behöver fler löppass i Strava-historiken för att beräkna åldersgradering.
           </p>
         ) : (
-          (() => {
-            const segments = [
-              { label: "Under 50", bg: "bg-purple-200/60", tier: "Average" },
-              { label: "50–60", bg: "bg-amber-200/60", tier: "Above avg" },
-              { label: "60–70", bg: "bg-emerald-200/60", tier: "Local" },
-              { label: "70–80", bg: "bg-lime-200/60", tier: "Regional" },
-              { label: "80–90", bg: "bg-sky-200/60", tier: "Mycket hög" },
-              { label: "90+", bg: "bg-pink-200/60", tier: "Toppnivå" },
-            ];
-            const p = ag.percent;
-            let nextLabel = "";
-            let nextThreshold = 0;
-            if (p < 50) {
-              nextLabel = "Över medel";
-              nextThreshold = 50;
-            } else if (p < 60) {
-              nextLabel = "Bra motionsnivå";
-              nextThreshold = 60;
-            } else if (p < 70) {
-              nextLabel = "Stark nivå";
-              nextThreshold = 70;
-            } else if (p < 80) {
-              nextLabel = "Mycket hög nivå";
-              nextThreshold = 80;
-            } else if (p < 90) {
-              nextLabel = "Exceptionellt hög nivå";
-              nextThreshold = 90;
-            }
-            const atTop = p >= 90;
-            const nextSentence = atTop
-              ? "En exceptionellt hög åldersgradering baserad på din bästa projektion."
-              : `Jämfört med ålderskorrigerad rekordstandard. Nästa nivå: ${nextLabel} vid ${nextThreshold}%.`;
-            // Map percent to bar position: segments are [0–50, 50–60, 60–70, 70–80, 80–90, 90–100]
-            // Each segment is 1/6 of bar width regardless of value range.
-            const segWidth = 100 / 6;
-            let posPct: number;
-            if (p < 50) posPct = (p / 50) * segWidth;
-            else if (p >= 90) posPct = 5 * segWidth + Math.min((p - 90) / 10, 1) * segWidth;
-            else posPct = segWidth + ((p - 50) / 10) * segWidth;
-            const pinLeft = Math.max(2, Math.min(posPct, 98));
-
-            return (
             <div className="space-y-5">
               {/* Runner track */}
               <div className="pt-12 pb-1">
@@ -124,7 +106,7 @@ export function BenchmarkCard({ runs: _fallback }: { runs: Run[] }) {
 
                   {/* Segmented bar */}
                   <div className="flex h-7 w-full overflow-hidden rounded-md border">
-                    {segments.map((s) => (
+                    {SEGMENTS.map((s) => (
                       <div
                         key={s.label}
                         className={`flex-1 ${s.bg} flex items-center justify-center text-[10px] font-medium text-foreground/70 border-r last:border-r-0`}
@@ -136,7 +118,7 @@ export function BenchmarkCard({ runs: _fallback }: { runs: Run[] }) {
 
                   {/* Tier labels */}
                   <div className="mt-1 flex w-full">
-                    {segments.map((s) => (
+                    {SEGMENTS.map((s) => (
                       <div
                         key={s.tier}
                         className="flex-1 text-center text-[10px] text-muted-foreground"
@@ -186,18 +168,16 @@ export function BenchmarkCard({ runs: _fallback }: { runs: Run[] }) {
                   ) : (
                     <>
                       <div className="mt-1 text-lg font-semibold tabular-nums">
-                        {(nextThreshold - p).toFixed(1)}%
+                        {(nextLevel.threshold - p).toFixed(1)}%
                       </div>
                       <div className="text-[11px] text-muted-foreground">
-                        {nextLabel} vid {nextThreshold}%
+                        {nextLevel.label} vid {nextLevel.threshold}%
                       </div>
                     </>
                   )}
                 </div>
               </div>
             </div>
-            );
-          })()
         )}
       </CardContent>
     </Card>
