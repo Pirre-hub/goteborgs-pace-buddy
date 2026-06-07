@@ -103,7 +103,7 @@ export function BenchmarkCard({ runs: _fallback }: { runs: Run[] }) {
             else posPct = segWidth + ((p - 50) / 10) * segWidth;
             const pinLeft = Math.max(2, Math.min(posPct, 98));
 
-          return (
+            return (
             <div className="space-y-5">
               {/* Runner track */}
               <div className="pt-12 pb-1">
@@ -196,8 +196,9 @@ export function BenchmarkCard({ runs: _fallback }: { runs: Run[] }) {
                 </div>
               </div>
             </div>
-          );
-        })()}
+            );
+          })()
+        )}
       </CardContent>
     </Card>
   );
