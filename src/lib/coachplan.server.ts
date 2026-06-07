@@ -274,6 +274,8 @@ export async function generatePlan(): Promise<CoachPlan> {
     moving_time: Number(r.moving_time),
     average_heartrate: r.average_heartrate ? Number(r.average_heartrate) : null,
     name: r.name,
+    type: (r as { type?: string }).type ?? null,
+    splits: (r as { splits?: unknown }).splits ?? null,
   }));
 
   const { acwr, acute, chronic, zone } = calcACWR(runs, goalPace);
