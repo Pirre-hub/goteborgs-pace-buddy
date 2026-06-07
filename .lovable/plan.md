@@ -1,60 +1,49 @@
-## Problem
+## Mål
 
-1. Modellen genererar inga gympass trots att system-prompten säger 4 pass/vecka (3 löp + 1 gym). Den prioriterar löppass och hoppar gympasset.
-2. Planen är för ambitiös – för mycket km, för höga tempon, för många kvalitetspass för en 64-årig motionär.
+Göra projektet redo att remixas till en ny person (t.ex. en kompis) utan att behöva leta igenom koden manuellt. Originalet fortsätter användas av dig, kopian körs separat med egen databas och egen Strava-koppling.
 
-## Ändringar i `src/lib/coachplan.server.ts`
+## Vad jag gör i koden
 
-### 1. Tvinga fram gympass i prompten
+1. **Centralisera atletprofilen** i en ny fil `src/lib/athlete.ts`:
+   ```ts
+   export const ATHLETE = {
+     firstName: "Per",
+     nickname: "Pirre",
+     age: 64,
+   };
+   ```
+   En enda plats att ändra vid remix.
 
-Lägg till en hård regel överst i `COACHREGLER`:
+2. **Byt ut hårdkodade namn** mot `ATHLETE.firstName` / `ATHLETE.nickname` / `ATHLETE.age` i:
+   - `src/lib/coachplan.server.ts` (system-prompt + user-prompt – "Per", "64-åring" osv.)
+   - `src/lib/coachchat.functions.ts` (system-prompt)
+   - eventuella UI-strängar som nämner "Per" (jag scannar och listar i implementationen)
 
-> **REGEL 0 (viktigast): Varje 7-dagarsperiod MÅSTE innehålla exakt 1 gympass. Över 14 dagar = exakt 2 gympass. Saknas gympasset är planen ogiltig. Gympasset placeras på en dag mellan två löppass (typ tor eller mån).**
+3. **Lägg till `REMIX.md`** i projektroten med en kort checklista för nästa person:
+   - Ändra `ATHLETE`-objektet i `src/lib/athlete.ts`
+   - Race-mål sätts via Settings-sidan (ingen kod)
+   - Byt Strava-secret `STRAVA_CLIENT_SECRET` + kör OAuth-flödet på nytt så `strava_tokens` fylls med den nya personens tokens
+   - Töm gamla data-tabeller (`strava_activities`, `coach_plan`, `coach_conversations`, `training_load`, `daily_choices`, `briefings`, `pace_dna`, `race_goal`, `strava_tokens`, `strava_sync`) – färdig SQL inkluderad
+   - `LOVABLE_API_KEY` och `ANTHROPIC_API_KEY` följer inte med remixen automatiskt – läggs till på nya projektet
 
-Lägg också till explicit exempel-vecka i prompten så modellen ser strukturen konkret:
+## Vad du gör (manuellt, inte kod)
 
-```
-EXEMPEL normalvecka (kopiera mönstret):
-Mån: Lugnt 6 km @ 6:30/km
-Tis: Vila
-Ons: Lugnt 6 km @ 6:30/km  (eller lätt fartlek om ACWR optimal)
-Tor: Gym (styrka) 45 min – knän/höfter
-Fre: Vila
-Lör: Lugnt 8 km @ 6:30/km
-Sön: Vila
-```
+- **Remixa projektet** via projektmenyn → "Remix". Det skapar nytt Lovable-projekt med egen Cloud-databas (tom) och egna secrets-slots.
+- **Strava-app**: antingen
+   - (a) skapa en separat Strava-app för kompisen och lägg dess client secret som `STRAVA_CLIENT_SECRET`, eller
+   - (b) återanvänd din Strava-app men låt kompisen göra OAuth-inloggning i nya appen – då hamnar hens tokens i den nya databasens `strava_tokens`.
+- **API-nycklar**: `LOVABLE_API_KEY` och `ANTHROPIC_API_KEY` – sätts på nytt i nya projektet.
 
-### 2. Sänk ambitionsnivån
+## Hur "uppdateras när originalet uppdateras" funkar
 
-- Ta bort kravet på "2 kvalitetspass/vecka" – ersätt med "max 1 kvalitetspass/vecka, och bara om ACWR är 0.8–1.3".
-- Sänk distanser: normalt löppass 6–8 km → **5–7 km**, långpass 14–18 km → **10–14 km**.
-- Lugnt tempo 6:20–6:45/km → **6:30–7:00/km** (mer realistiskt för 64-åring i basperiod).
-- Intervaller 5:00–5:20/km → **5:20–5:40/km**.
-- Tröskel 5:40–5:55/km → **5:50–6:10/km**.
+Remix är en engångskopia – det finns ingen automatisk synk. Två praktiska mönster:
+- När du gör en förbättring här, säg till mig: "applicera senaste ändringen även i kompisens projekt" och jag gör motsvarande edit där.
+- Eller: behåll båda i samma workspace så kan jag läsa cross-project och spegla ändringar på begäran.
 
-### 3. Förtydliga 4-dagars-veckan
+Ingen kodändring behövs för det – bara värt att veta.
 
-Byt formuleringen "4 pass per vecka: 3 löppass + 1 gympass" till en explicit räkneregel:
+## Tekniska detaljer
 
-> **Räkna alltid: 3 löppass + 1 gympass + 3 vilodagar = 7 dagar. Aldrig 4 löppass. Aldrig 0 gympass.**
-
-### 4. Validering efter AI-svaret (defensiv)
-
-Efter `parsed = toolUse.input` i `generatePlan()`, lägg till en sanity-check:
-
-```ts
-const gymCount = parsed.plan.filter(d => /gym|styrka|strength/i.test(d.type)).length;
-if (gymCount < 2) {
-  console.warn("[CoachPlan] AI skipped gym days, got", gymCount);
-}
-```
-
-Loggas serverside – ingen retry, men synlig signal om modellen fuskar.
-
-## Inga UI-ändringar
-
-`CoachPlanCard.tsx` hanterar redan gym/vila/löp korrekt (purple border + 💪 för gym, grå + 🛏 för vila). När prompten faktiskt producerar gympass kommer de att visas automatiskt.
-
-## Verifiering
-
-Efter ändring: tryck "Uppdatera coach", öppna devtools-konsolen, kolla `[CoachPlan] full plan (...)`-loggen → ska visa minst 2 dagar med `type` som innehåller "Gym".
+- Inga DB-migrations krävs i originalet. Den nya databasen i remixen ärver schemat automatiskt.
+- `race_goal`-tabellen är redan tom-vid-start-vänlig (Settings-sidan hanterar insert).
+- Inga UI-komponenter behöver ändras struktur-mässigt; bara textsträngar som råkar nämna "Per".
