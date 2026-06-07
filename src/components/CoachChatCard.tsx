@@ -63,6 +63,16 @@ export function CoachChatCard({ planContext }: { planContext: PlanContext }) {
     },
   });
 
+  const clearMut = useMutation({
+    mutationFn: () => clearFn(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["coach-chat-today"] });
+      qc.invalidateQueries({ queryKey: ["recent-choices"] });
+      toast.success("Konversationen rensad");
+    },
+    onError: () => toast.error("Kunde inte rensa konversationen"),
+  });
+
   const messages: Msg[] = (convQ.data?.messages ?? []) as Msg[];
   const showQuick = messages.length === 0 && !pendingUser;
 
