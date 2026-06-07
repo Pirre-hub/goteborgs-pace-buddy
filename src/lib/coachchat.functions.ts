@@ -210,7 +210,7 @@ ATLETEN
 
 - Senaste lopp: Göteborgsvarvet 2026, 2:47 med quadkramper från km 15
 
-- Nuvarande age-grade: ~67% (Local class, siktar mot Regional 70%)
+- Nuvarande åldersgradering: cirka 67% (bra motionsnivå, siktar mot stark nivå vid 70%)
 
 - Mål: Göteborgsvarvet 2027, förbättra tid och undvika kramper
 
