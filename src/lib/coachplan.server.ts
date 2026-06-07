@@ -235,10 +235,10 @@ export async function generatePlan(): Promise<CoachPlan> {
     supabaseAdmin
       .from("strava_activities")
       .select(
-        "start_date_local, distance, moving_time, average_heartrate, name",
+        "id, name, type, start_date_local, distance, moving_time, average_heartrate, splits",
       )
       .order("start_date_local", { ascending: false })
-      .limit(40),
+      .limit(200),
     supabaseAdmin
       .from("daily_choices")
       .select("date, recommended_type, actual_choice")
@@ -274,6 +274,8 @@ export async function generatePlan(): Promise<CoachPlan> {
     moving_time: Number(r.moving_time),
     average_heartrate: r.average_heartrate ? Number(r.average_heartrate) : null,
     name: r.name,
+    type: (r as { type?: string }).type ?? null,
+    splits: (r as { splits?: unknown }).splits ?? null,
   }));
 
   const { acwr, acute, chronic, zone } = calcACWR(runs, goalPace);
@@ -308,6 +310,43 @@ export async function generatePlan(): Promise<CoachPlan> {
       return `- ${r.start_date_local.slice(0, 10)}${name}: ${distKm.toFixed(1)} km @ ${pace}${hr}`;
     })
     .join("\n");
+
+  // Build splits summary for last running activities with splits data
+  type SplitRow = {
+    split: number;
+    distance: number;
+    moving_time: number;
+    average_speed: number;
+    average_heartrate?: number;
+  };
+  const runsWithSplits = runs
+    .filter((r) => {
+      const cat = ["Run", "TrailRun", "VirtualRun"].includes(r.type ?? "");
+      const splits = r.splits as SplitRow[] | null;
+      return cat && Array.isArray(splits) && splits.length > 0;
+    })
+    .slice(0, 3);
+
+  const splitsLines = runsWithSplits
+    .map((r) => {
+      const splits = (r.splits as SplitRow[]) ?? [];
+      const distKm = (r.distance / 1000).toFixed(1);
+      const date = r.start_date_local.slice(0, 10);
+      const name = r.name ?? "Pass";
+      const splitDetail = splits
+        .map((s) => {
+          const splitPaceSec = s.moving_time / (s.distance / 1000);
+          const pm = Math.floor(splitPaceSec / 60);
+          const ps = Math.round(splitPaceSec % 60).toString().padStart(2, "0");
+          const hr = s.average_heartrate
+            ? ` (${Math.round(s.average_heartrate)}bpm)`
+            : "";
+          return `    km${s.split}: ${pm}:${ps}/km${hr}`;
+        })
+        .join("\n");
+      return `${date} – ${name} (${distKm}km):\n${splitDetail}`;
+    })
+    .join("\n\n");
 
   const latestRun = runs[0] ?? null;
   const based_on_run = latestRun
@@ -511,7 +550,9 @@ COACHREGLER – MÅSTE FÖLJAS
 
 9. ÄRLIGHET: om Per gör något dumt, säg det direkt med vetenskaplig motivering
 
-10. PERSONALISERING: avsluta alltid med hur rådet specifikt relaterar till Pers mål och kramperfarenheten`;
+10. PERSONALISERING: avsluta alltid med hur rådet specifikt relaterar till Pers mål och kramperfarenheten
+
+11. SPLITS-ANALYS: om km-splits finns tillgängliga, analysera alltid pace-fördelningen. Ojämn pace (snabb start, avtagande slut) är det vanligaste misstaget vid halvmaraton och direkt kopplat till kramper. Påpeka om Per springer för snabbt tidigt.`;
 
 
   const latestRunRelative = based_on_run
@@ -576,6 +617,7 @@ TRÄNINGSBELASTNING:
 SENASTE ${last7.length} PASS (inkl tempo och pulsdata):
 
 ${last7Lines || "(inga pass)"}
+${splitsLines ? `\nKM-SPLITS SENASTE LÖPPASS:\n${splitsLines}\n\nAnalysera pace-fördelningen: springer Per jämnt eller för snabbt i början? Ser du tecken på trötthet (avtagande pace sista km)?\n` : ""}
 
 KOMMANDE 14 DAGAR (day_offset|weekday|date):
 
