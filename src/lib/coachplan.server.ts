@@ -35,7 +35,7 @@ const TOOL = {
       commentary: {
         type: "string",
         description:
-          "3-5 meningar prestationsanalys. Nämn senaste passets tempo och distans explicit. Direkt, ärlig, peppande ton – inte defensiv.",
+          "Max 2 meningar. Ett tydligt beslut + en konkret rekommendation. Inga studiereferenser, inga författarnamn, inga fysiologiska mekanismer.",
       },
       plan: {
         type: "array",

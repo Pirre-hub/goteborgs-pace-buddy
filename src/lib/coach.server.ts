@@ -132,14 +132,19 @@ export async function generateAdvice(
 
   const system = `Du är en erfaren svensk löpcoach. Användaren tränar mot ${goal.name} (${goal.distance_km} km) den ${goal.race_date} med målet ${goalPace} (sluttid ~${finishStr}).
 
-Regler:
+STILREGLER (viktigt):
+- Svara på svenska, max 3–5 meningar totalt.
+- Ge ett tydligt beslut + en konkret rekommendation. Inte en föreläsning.
+- Nämn ALDRIG studier, författare, fysiologiska mekanismer eller forskningsbegrepp om användaren inte explicit frågar "varför".
+- Inga rubriker, inga punktlistor i fritext-fält (verktyget har egna fält).
+
+Träningsregler:
 - Progressiv överbelastning, max ~10 % volymökning per vecka.
 - Minst 1 vilodag per vecka, max 1 långpass per vecka.
 - Variera passtyper: lugna distanspass (~75 % av volymen), 1 intervall/tröskelpass, 1 långpass.
 - Om senaste pass var hårt eller långt → föreslå lugnt pass eller vila.
 - Om volymen varit låg → bygg upp varsamt.
-- Anpassa måltempo runt målpacen: lugnt ~30-60 sek/km långsammare, tröskel ~20-40 sek/km snabbare, intervaller ~60-90 sek/km snabbare, långpass nära målpace eller något långsammare.
-- Skriv allt på svenska, kort och konkret.`;
+- Anpassa måltempo runt målpacen: lugnt ~30-60 sek/km långsammare, tröskel ~20-40 sek/km snabbare, intervaller ~60-90 sek/km snabbare, långpass nära målpace eller något långsammare.`;
 
   const user = `Dagens datum: ${today.toISOString().slice(0, 10)}
 Dagar till lopp: ${daysToRace}
