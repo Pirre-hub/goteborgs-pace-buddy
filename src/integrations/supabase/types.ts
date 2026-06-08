@@ -92,6 +92,36 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_adjustments: {
+        Row: {
+          changed_days: Json
+          created_at: string | null
+          date: string
+          id: string
+          reason: string
+          triggered_by: string
+          updated_at: string | null
+        }
+        Insert: {
+          changed_days: Json
+          created_at?: string | null
+          date: string
+          id?: string
+          reason: string
+          triggered_by: string
+          updated_at?: string | null
+        }
+        Update: {
+          changed_days?: Json
+          created_at?: string | null
+          date?: string
+          id?: string
+          reason?: string
+          triggered_by?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       daily_choices: {
         Row: {
           actual_choice: string | null
@@ -329,6 +359,42 @@ export type Database = {
           date?: string
           tsb?: number
           updated_at?: string
+        }
+        Relationships: []
+      }
+      weekly_plans: {
+        Row: {
+          acwr_at_generation: number | null
+          commentary: string
+          days: Json
+          generated_at: string | null
+          id: string
+          strategy: string
+          tsb_at_generation: number | null
+          updated_at: string | null
+          week_start: string
+        }
+        Insert: {
+          acwr_at_generation?: number | null
+          commentary: string
+          days: Json
+          generated_at?: string | null
+          id?: string
+          strategy: string
+          tsb_at_generation?: number | null
+          updated_at?: string | null
+          week_start: string
+        }
+        Update: {
+          acwr_at_generation?: number | null
+          commentary?: string
+          days?: Json
+          generated_at?: string | null
+          id?: string
+          strategy?: string
+          tsb_at_generation?: number | null
+          updated_at?: string | null
+          week_start?: string
         }
         Relationships: []
       }
