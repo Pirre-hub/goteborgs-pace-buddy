@@ -192,9 +192,30 @@ function ChatBubble({ role, content }: { role: "user" | "coach"; content: string
       <div className="shrink-0 w-7 h-7 rounded-full bg-background border flex items-center justify-center text-sm">
         🧑‍🏫
       </div>
-      <div className="max-w-[80%] rounded-2xl rounded-bl-sm bg-background border px-3 py-2 text-sm whitespace-pre-wrap">
-        {content}
+      <div className="max-w-[80%] rounded-2xl rounded-bl-sm bg-background border px-3 py-2 text-sm">
+        <CoachContent content={content} />
       </div>
+    </div>
+  );
+}
+
+function CoachContent({ content }: { content: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const LIMIT = 280;
+  const isLong = content.length > LIMIT;
+  if (!isLong) {
+    return <div className="whitespace-pre-wrap">{content}</div>;
+  }
+  const preview = content.slice(0, LIMIT).trimEnd() + "…";
+  return (
+    <div className="space-y-1">
+      <div className="whitespace-pre-wrap">{expanded ? content : preview}</div>
+      <button
+        onClick={() => setExpanded((v) => !v)}
+        className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+      >
+        {expanded ? "Visa mindre" : "Visa resonemang"}
+      </button>
     </div>
   );
 }

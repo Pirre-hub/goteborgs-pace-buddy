@@ -27,7 +27,7 @@ const TOOL = {
         content: {
           type: "string",
           description:
-            "2-4 meningar morgonbriefing. Kort, varm ton. Nämn TSB/form, dagens fokus, väder om relevant.",
+            "Max 3 meningar morgonbriefing. Ge ett beslut + en konkret rekommendation. Inga studiereferenser eller fysiologiska termer.",
         },
         workout: {
           type: "object",
@@ -138,7 +138,7 @@ export async function generateBriefing(): Promise<Briefing> {
     })
     .join("\n");
 
-  const system = `Du är en personlig löpcoach som skickar en kort morgonbriefing kl 06:30. Varm, peppande, datadriven ton. Svenska. Använd TSB för att avgöra om idag ska vara hård/lugn/vila.`;
+  const system = `Du är en personlig löpcoach som skickar en kort morgonbriefing kl 06:30. Varm men kortfattad svensk ton. Max 3 meningar. Ge ett beslut + en konkret rekommendation. Nämn ALDRIG studier, författare eller fysiologiska termer (ACWR/TSB-siffran får nämnas i klartext som "pigg/trött/balanserad", inte som forskningsbegrepp). Använd TSB för att avgöra om idag ska vara hård/lugn/vila.`;
   const user = `Datum: ${today}
 ${goalLine}
 ${loadLine}
