@@ -3,9 +3,16 @@ import webpush from "web-push";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 export const VAPID_PUBLIC_KEY =
+  process.env.VAPID_PUBLIC_KEY ??
   "BMceE1ss5T3em8iRYkE0fXRyrRlz6xlgJ9bHBJwQS2g7AjAwv5JlWKfAp_I2soFh7XvDptsPgvHgHW05IANSTdc";
-const VAPID_PRIVATE_KEY = "1GblfHjvlFvUt15ogbOruCrPxsHUoefLbNjYsK5fQao";
-const VAPID_SUBJECT = "mailto:coach@pirrecoachen.app";
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
+const VAPID_SUBJECT = process.env.VAPID_SUBJECT ?? "mailto:coach@pirrecoachen.app";
+
+if (!VAPID_PRIVATE_KEY) {
+  throw new Error(
+    "VAPID_PRIVATE_KEY is not set. Add it as a server secret to enable push notifications.",
+  );
+}
 
 webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 

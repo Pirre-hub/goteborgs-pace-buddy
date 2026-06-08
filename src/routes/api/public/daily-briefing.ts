@@ -5,7 +5,18 @@ import { sendPushToAll } from "@/lib/push.server";
 export const Route = createFileRoute("/api/public/daily-briefing")({
   server: {
     handlers: {
-      POST: async () => {
+      POST: async ({ request }) => {
+        const secret = process.env.BRIEFING_CRON_SECRET;
+        if (!secret) {
+          console.error("BRIEFING_CRON_SECRET not configured");
+          return new Response("Server not configured", { status: 500 });
+        }
+        const provided =
+          request.headers.get("x-cron-secret") ??
+          new URL(request.url).searchParams.get("secret");
+        if (provided !== secret) {
+          return new Response("Unauthorized", { status: 401 });
+        }
         try {
           const briefing = await generateBriefing();
           const push = await sendPushToAll({
