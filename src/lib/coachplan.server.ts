@@ -624,7 +624,7 @@ KOMMANDE 14 DAGAR (day_offset|weekday|date):
 
 ${upcomingDates.join("\n")}
 
-Generera commentary (3–5 meningar, börja med senaste passets datum + tempo) + 14 pass via rolling_plan. Varje purpose ska vara 2–3 meningar som förklarar VARFÖR just detta pass just denna dag, kopplat till ACWR och dagar till lopp.
+Generera commentary (MAX 2 meningar – ett beslut + en konkret rekommendation, inga studier eller fysiologiska termer) + 14 pass via rolling_plan. Varje purpose ska vara EN mening som förklarar varför just detta pass just denna dag.
 
 KONTROLL INNAN DU SVARAR: räkna dina 14 dagar – det MÅSTE finnas exakt 2 gympass (type innehåller "Gym") och max 6 löppass totalt. Resten är vila. Om inte – gör om planen.${deviations.length > 0 ? `\n\nAVVIKELSER SENASTE 14 DAGAR:\n${deviations.join("\n")}` : ""}${consecutiveDeviations >= 3 ? `\n\nVARNING: Atleten har avvikit från rekommendationen ${consecutiveDeviations} dagar i rad. Påtala detta direkt i commentary – fråga om det är skada, trötthet eller motivation och anpassa planen därefter.` : ""}`;
 
