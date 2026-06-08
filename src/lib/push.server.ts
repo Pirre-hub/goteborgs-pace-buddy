@@ -51,6 +51,9 @@ export async function sendPushToAll(payload: {
     .from("push_subscriptions")
     .select("endpoint, p256dh, auth");
   if (!subs?.length) return { sent: 0, failed: 0 };
+  if (!ensureVapid()) return { sent: 0, failed: 0 };
+
+
 
   let sent = 0;
   let failed = 0;
