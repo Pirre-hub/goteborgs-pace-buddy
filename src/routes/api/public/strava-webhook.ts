@@ -22,6 +22,18 @@ export const Route = createFileRoute("/api/public/strava-webhook")({
       },
       // Strava event delivery
       POST: async ({ request }) => {
+        // Strava does not sign webhook POSTs. We authenticate the caller by
+        // requiring a shared secret embedded in the callback URL (set at
+        // webhook registration time) and by verifying that owner_id matches
+        // the athlete we have a token for.
+        const cbSecret = process.env.STRAVA_WEBHOOK_SECRET;
+        if (cbSecret) {
+          const provided = new URL(request.url).searchParams.get("secret");
+          if (provided !== cbSecret) {
+            return new Response("Unauthorized", { status: 401 });
+          }
+        }
+
         type Event = {
           object_type: "activity" | "athlete";
           object_id: number;
@@ -35,6 +47,16 @@ export const Route = createFileRoute("/api/public/strava-webhook")({
           return new Response("Bad JSON", { status: 400 });
         }
         if (!event) return new Response("ok");
+
+        // Verify owner_id matches our connected athlete
+        const { data: tokenRow } = await supabaseAdmin
+          .from("strava_tokens")
+          .select("athlete_id")
+          .eq("id", 1)
+          .maybeSingle();
+        if (!tokenRow?.athlete_id || tokenRow.athlete_id !== event.owner_id) {
+          return new Response("Forbidden", { status: 403 });
+        }
 
         if (event.object_type === "activity") {
           if (event.aspect_type === "delete") {
@@ -56,7 +78,6 @@ export const Route = createFileRoute("/api/public/strava-webhook")({
               console.error("webhook sync fail", e);
             }
           }
-          // Trigger realtime ping
           await supabaseAdmin
             .from("strava_sync")
             .update({
