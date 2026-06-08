@@ -16,6 +16,7 @@ import {
   Bed,
 } from "lucide-react";
 import { toast } from "sonner";
+import { acwrDecision } from "@/lib/training";
 import {
   Table,
   TableBody,
@@ -139,28 +140,32 @@ export function CoachPlanCard() {
           <>
             {/* ACWR header */}
             {plan.acwr != null && plan.acwr_zone && (
-              <div className="flex items-center gap-3 flex-wrap">
-                {(() => {
-                  const Z = ZONE_LABEL[plan.acwr_zone];
-                  const Icon = Z.Icon;
-                  return (
-                    <>
-                      <div className="flex items-center gap-2">
-                        <Icon className={`h-5 w-5 ${Z.tone}`} />
-                        <span className={`font-semibold ${Z.tone}`}>
-                          {Z.text}
-                        </span>
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        ACWR{" "}
-                        <span className="tabular-nums font-medium text-foreground">
-                          {plan.acwr.toFixed(2)}
-                        </span>{" "}
-                        (akut/kronisk)
-                      </div>
-                    </>
-                  );
-                })()}
+              <div className="space-y-1">
+                <div className="flex items-center gap-3 flex-wrap">
+                  {(() => {
+                    const Z = ZONE_LABEL[plan.acwr_zone];
+                    const Icon = Z.Icon;
+                    return (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <Icon className={`h-5 w-5 ${Z.tone}`} />
+                          <span className={`font-semibold ${Z.tone}`}>
+                            {Z.text}
+                          </span>
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          ACWR{" "}
+                          <span className="tabular-nums font-medium text-foreground">
+                            {plan.acwr.toFixed(2)}
+                          </span>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+                <div className="text-sm text-foreground">
+                  {acwrDecision(plan.acwr)}
+                </div>
               </div>
             )}
 

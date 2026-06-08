@@ -15,6 +15,7 @@ import {
 } from "recharts";
 import { format, parseISO } from "date-fns";
 import { sv } from "date-fns/locale";
+import { tsbDecision } from "@/lib/training";
 
 function tsbColor(tsb: number) {
   if (tsb > 5) return "text-emerald-600";
@@ -29,10 +30,7 @@ function tsbLabel(tsb: number) {
 }
 
 function interpretation(tsb: number) {
-  if (tsb > 5)
-    return "Du är utvilad och redo att prestera – bra timing inför loppet.";
-  if (tsb >= 0) return "Bra balans mellan form och trötthet.";
-  return "Kroppen är lite trött. Lugna pass prioriteras.";
+  return tsbDecision(tsb);
 }
 
 export function TrainingLoadCard() {
