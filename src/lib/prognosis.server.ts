@@ -28,6 +28,8 @@ export type RacePrognosis = {
   trend_sec_per_km_4w: number | null; // negative = improving
   based_on_runs: number;
   ref_distance_km: number | null;
+  min_time_sec?: number | null;
+  max_time_sec?: number | null;
   insufficient_reason?: string;
 };
 
@@ -36,45 +38,74 @@ function isRun(r: { sport_type: string | null; type: string | null }) {
   return s.includes("run");
 }
 
-function median(nums: number[]): number {
-  const a = [...nums].sort((x, y) => x - y);
-  const n = a.length;
-  if (n === 0) return 0;
-  return n % 2 ? a[(n - 1) / 2] : (a[n / 2 - 1] + a[n / 2]) / 2;
-}
-
 function projectFromRuns(
   runs: RunRow[],
   raceDistanceKm: number,
-): { timeSec: number; basedOn: number; refDistKm: number } | null {
-  const minRef = Math.max(raceDistanceKm * 0.6, 8); // halvmara → 12.6 km, fallback ≥ 8 km
+): {
+  timeSec: number;
+  basedOn: number;
+  refDistKm: number;
+  minTime: number;
+  maxTime: number;
+} | null {
+  // Sänkt minsta-passlängd till 5 km så fler pass kommer med (Riegel är rimligt
+  // träffsäker ned till ~5 km för halvmara).
   const candidates = runs
     .filter(isRun)
     .map((r) => ({
       distKm: Number(r.distance) / 1000,
       sec: Number(r.moving_time),
     }))
-    .filter((r) => r.distKm >= minRef && r.sec > 0);
+    .filter((r) => r.distKm >= 5 && r.sec > 0);
 
-  let pool = candidates;
-  if (pool.length === 0) {
-    pool = runs
-      .filter(isRun)
-      .map((r) => ({
-        distKm: Number(r.distance) / 1000,
-        sec: Number(r.moving_time),
-      }))
-      .filter((r) => r.distKm >= 8 && r.sec > 0);
+  if (candidates.length === 0) return null;
+
+  // Tier-blend: långpass (≥10 km) väger 60 %, korta pass 40 %.
+  // Inom varje tier distansviktad average — längre pass dominerar.
+  const longs = candidates.filter((c) => c.distKm >= 10);
+  const shorts = candidates.filter((c) => c.distKm < 10);
+
+  const weightedProjection = (
+    pool: { distKm: number; sec: number }[],
+  ): { time: number; weight: number } => {
+    if (pool.length === 0) return { time: 0, weight: 0 };
+    let wSum = 0;
+    let tSum = 0;
+    for (const r of pool) {
+      const projected = r.sec * Math.pow(raceDistanceKm / r.distKm, RIEGEL_EXPONENT);
+      const w = r.distKm; // distansviktat
+      tSum += projected * w;
+      wSum += w;
+    }
+    return { time: tSum / wSum, weight: wSum };
+  };
+
+  const longProj = weightedProjection(longs);
+  const shortProj = weightedProjection(shorts);
+
+  let timeSec: number;
+  if (longProj.weight > 0 && shortProj.weight > 0) {
+    timeSec = longProj.time * 0.6 + shortProj.time * 0.4;
+  } else if (longProj.weight > 0) {
+    timeSec = longProj.time;
+  } else {
+    timeSec = shortProj.time;
   }
-  if (pool.length === 0) return null;
 
-  const projections = pool.map((r) =>
-    r.sec * Math.pow(raceDistanceKm / r.distKm, RIEGEL_EXPONENT),
+  const allProjections = candidates.map(
+    (r) => r.sec * Math.pow(raceDistanceKm / r.distKm, RIEGEL_EXPONENT),
   );
+  const minTime = Math.min(...allProjections);
+  const maxTime = Math.max(...allProjections);
+  const refDistKm =
+    candidates.reduce((s, r) => s + r.distKm, 0) / candidates.length;
+
   return {
-    timeSec: median(projections),
-    basedOn: pool.length,
-    refDistKm: median(pool.map((p) => p.distKm)),
+    timeSec,
+    basedOn: candidates.length,
+    refDistKm,
+    minTime,
+    maxTime,
   };
 }
 
@@ -120,16 +151,18 @@ export async function getRacePrognosis(): Promise<RacePrognosis> {
   );
 
   const now = new Date();
-  const since28 = new Date(now.getTime() - 28 * 86400000);
-  const since56 = new Date(now.getTime() - 56 * 86400000);
+  // Bredare fönster (42 d) så fler pass kommer med, plus jämförelsefönster 42–84 d
+  // för 4-veckors-trend.
+  const since42 = new Date(now.getTime() - 42 * 86400000);
+  const since84 = new Date(now.getTime() - 84 * 86400000);
   const fourWeeksAgo = new Date(now.getTime() - 28 * 86400000);
 
   const { data: acts } = await supabaseAdmin
     .from("strava_activities")
     .select("start_date_local, distance, moving_time, sport_type, type")
-    .gte("start_date_local", since56.toISOString())
+    .gte("start_date_local", since84.toISOString())
     .order("start_date_local", { ascending: false })
-    .limit(200);
+    .limit(300);
 
   const runs: RunRow[] = (acts ?? []).map((a) => ({
     start_date_local: String(a.start_date_local),
@@ -140,11 +173,11 @@ export async function getRacePrognosis(): Promise<RacePrognosis> {
   }));
 
   const recent = runs.filter(
-    (r) => new Date(r.start_date_local) >= since28,
+    (r) => new Date(r.start_date_local) >= since42,
   );
   const olderWindow = runs.filter((r) => {
     const d = new Date(r.start_date_local);
-    return d < fourWeeksAgo && d >= since56;
+    return d < fourWeeksAgo && d >= since84;
   });
 
   const proj = projectFromRuns(recent, distanceKm);
@@ -167,7 +200,7 @@ export async function getRacePrognosis(): Promise<RacePrognosis> {
       based_on_runs: 0,
       ref_distance_km: null,
       insufficient_reason:
-        "Behöver minst ett pass på ≥ 8 km senaste 4 veckorna för prognos.",
+        "Behöver minst ett löppass på ≥ 5 km senaste 6 veckorna för prognos.",
     };
   }
 
@@ -176,7 +209,7 @@ export async function getRacePrognosis(): Promise<RacePrognosis> {
   const ctl28 = await fetchCtl(fourWeeksAgo);
   let adjustedTime = proj.timeSec;
   if (ctlNow != null && ctl28 != null && ctl28 > 0) {
-    const ctlDelta = (ctlNow - ctl28) / ctl28; // fraction
+    const ctlDelta = (ctlNow - ctl28) / ctl28;
     const adj = Math.max(-0.02, Math.min(0.02, -ctlDelta * 0.5));
     adjustedTime = proj.timeSec * (1 + adj);
   }
@@ -190,12 +223,11 @@ export async function getRacePrognosis(): Promise<RacePrognosis> {
   else if (paceGap <= 5) status = "on_track";
   else status = "behind";
 
-  // 4w trend: same calc, but for runs that existed 4 weeks ago
   let trendSecPerKm: number | null = null;
   const oldProj = projectFromRuns(olderWindow, distanceKm);
   if (oldProj && oldProj.basedOn >= 1) {
     const oldPace = oldProj.timeSec / distanceKm;
-    trendSecPerKm = prognosisPace - oldPace; // negative = improvement
+    trendSecPerKm = prognosisPace - oldPace;
   }
 
   return {
@@ -215,5 +247,7 @@ export async function getRacePrognosis(): Promise<RacePrognosis> {
     trend_sec_per_km_4w: trendSecPerKm != null ? Math.round(trendSecPerKm) : null,
     based_on_runs: proj.basedOn,
     ref_distance_km: +proj.refDistKm.toFixed(1),
+    min_time_sec: Math.round(proj.minTime),
+    max_time_sec: Math.round(proj.maxTime),
   };
 }

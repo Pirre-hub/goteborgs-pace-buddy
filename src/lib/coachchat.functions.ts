@@ -24,15 +24,25 @@ function todayStr() {
 export const getTodayConversation = createServerFn({ method: "GET" }).handler(
   async () => {
     const dateStr = todayStr();
+    // Hämta 7 dagar bakåt så coachen har minne av tidigare beslut.
+    const since = new Date();
+    since.setDate(since.getDate() - 7);
+    const sinceStr = `${since.getFullYear()}-${(since.getMonth() + 1)
+      .toString()
+      .padStart(2, "0")}-${since.getDate().toString().padStart(2, "0")}`;
     const { data } = await supabaseAdmin
       .from("coach_conversations")
-      .select("role, content, created_at")
-      .eq("date", dateStr)
+      .select("role, content, created_at, date")
+      .gte("date", sinceStr)
       .order("created_at", { ascending: true });
     return {
-      messages: ((data ?? []) as { role: string; content: string }[]).map(
-        (m) => ({ role: m.role as "user" | "coach", content: m.content }),
-      ) as Message[],
+      messages: ((data ?? []) as { role: string; content: string; date: string }[]).map(
+        (m) => ({
+          role: m.role as "user" | "coach",
+          content: m.content,
+          date: m.date,
+        }),
+      ),
       date: dateStr,
     };
   },
@@ -54,19 +64,29 @@ export const sendMessage = createServerFn({ method: "POST" })
     else if (/\b(promenad|promenera|går\s|walk)/.test(lower)) detectedChoice = "walking";
     else if (/\b(vila|vilar|vilodag|rest)/.test(lower)) detectedChoice = "rest";
 
+    // Bara persistera om valet faktiskt ändrats (slipper trigga replan i onödan).
+    let choiceChanged = false;
     if (detectedChoice) {
-      await supabaseAdmin
+      const { data: existing } = await supabaseAdmin
         .from("daily_choices")
-        .upsert(
-          {
-            date: dateStr,
-            recommended_type: planContext.todayPlan.slice(0, 64) || "unknown",
-            actual_choice: detectedChoice,
-            note: message,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "date" },
-        );
+        .select("actual_choice")
+        .eq("date", dateStr)
+        .maybeSingle();
+      choiceChanged = existing?.actual_choice !== detectedChoice;
+      if (choiceChanged) {
+        await supabaseAdmin
+          .from("daily_choices")
+          .upsert(
+            {
+              date: dateStr,
+              recommended_type: planContext.todayPlan.slice(0, 64) || "unknown",
+              actual_choice: detectedChoice,
+              note: message,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "date" },
+          );
+      }
     }
 
     await supabaseAdmin.from("coach_conversations").insert({
@@ -75,21 +95,37 @@ export const sendMessage = createServerFn({ method: "POST" })
       content: message,
     });
 
-
+    // Hämta 7 dagars historik så coachen minns tidigare beslut.
+    const since = new Date();
+    since.setDate(since.getDate() - 7);
+    const sinceStr = `${since.getFullYear()}-${(since.getMonth() + 1)
+      .toString()
+      .padStart(2, "0")}-${since.getDate().toString().padStart(2, "0")}`;
     const { data: history } = await supabaseAdmin
       .from("coach_conversations")
-      .select("role, content")
-      .eq("date", dateStr)
+      .select("role, content, date, created_at")
+      .gte("date", sinceStr)
       .order("created_at", { ascending: true });
 
-    const messages = ((history ?? []) as { role: string; content: string }[]).map(
-      (m) => ({
+    const weekdayShort = ["sön", "mån", "tis", "ons", "tor", "fre", "lör"];
+    const messages = ((history ?? []) as {
+      role: string;
+      content: string;
+      date: string;
+      created_at: string;
+    }[]).map((m) => {
+      const isToday = m.date === dateStr;
+      const d = new Date(m.created_at);
+      const prefix = isToday
+        ? ""
+        : `[${weekdayShort[d.getDay()]} ${m.date.slice(5)}] `;
+      return {
         role: (m.role === "coach" ? "assistant" : "user") as
           | "user"
           | "assistant",
-        content: m.content,
-      }),
-    );
+        content: prefix + m.content,
+      };
+    });
 
     const tsbLabel =
       planContext.tsb != null
@@ -185,7 +221,7 @@ ${aggregateStr}
 PASS SENASTE 28 DAGARNA (från Strava):
 ${recentActsStr}
 
-${planContext.recentDeviations ? `Avvikelser från plan: ${planContext.recentDeviations}` : ""}
+
 
 `;
 
@@ -198,7 +234,18 @@ STILREGLER (viktigast av allt):
 - Nämn ALDRIG studier, författarnamn (Schwellnus, Seiler, Gabbett, Tanaka, Pfitzinger, Bompa, Daniels…), forskningsbegrepp (neuromuskulär trötthet, superkompensation, kapillärtäthet, polariserad träning, periodisering, ACWR-zon…) eller fysiologiska mekanismer om {{NAME}} inte explicit frågar "varför". Översätt direkt till beslut.
 - Du får referera till siffror som ACWR/TSB i klartext ("du är pigg", "belastningen är hög"), inte som forskningsbegrepp.
 - Bara om {{NAME}} explicit ber om förklaring, motivering, vetenskap eller "varför" → då får du fördjupa.
+
+MINNE OCH KONTINUITET:
+- Du har full tillgång till de senaste 7 dagarnas konversation ovan (äldre meddelanden är prefixade med [veckodag MM-DD]).
+- Referera till tidigare beslut och resonemang när det är relevant ("som vi sa i går", "du nämnde i tisdags att…").
+- Upprepa ALDRIG samma fråga, råd eller varning som redan besvarats de senaste dagarna.
+
+ATLETENS VAL ÄR DATA, INTE OLYDNAD:
+- Om {{NAME}} valde löpning när planen sa vila (eller tvärtom) → behandla det som ett val, inte en avvikelse.
+- Klaga ALDRIG på att planen inte följdes. Säg inte "du avvek från planen" eller "du skulle ha vilat".
+- Anpassa istället nästa pass utifrån vad som faktiskt gjordes.
 `;
+
 
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -222,9 +269,9 @@ STILREGLER (viktigast av allt):
 
     const replanMatch = responseText.match(/REPLAN:(\{[\s\S]*\})/);
     const cleanResponse = responseText.replace(/\s*REPLAN:\{[\s\S]*\}\s*$/, "").trim();
-    // Always replan when the user explicitly chose a workout type – the
-    // schedule needs to reflect that choice immediately.
-    const triggersReplan = !!replanMatch || !!detectedChoice;
+    // Replan bara när valet faktiskt ändrats — annars triggar varje upprepning
+    // (t.ex. "ok jag tar löpning" två gånger) en ny plan utan ny data.
+    const triggersReplan = !!replanMatch || choiceChanged;
 
     await supabaseAdmin.from("coach_conversations").insert({
       date: dateStr,
@@ -235,7 +282,7 @@ STILREGLER (viktigast av allt):
 
     if (triggersReplan) {
       try {
-        await generatePlan();
+        await generatePlan({ force: true });
       } catch (e) {
         console.error("replan failed", e);
       }

@@ -1,127 +1,75 @@
 
-# Sprint: Kortare coach + Prognos överst
-
-Två väl avgränsade förändringar som tillsammans förändrar hur appen känns:
-beslut före resonemang, och "är jag på rätt väg?" på 1 sekund.
+Tre konkreta fixar mot de problem du tar upp.
 
 ---
 
-## Steg 1 – Kortare, beslutsorienterade coachsvar
+## 1. Prognos baserad på fler pass (inte bara långpass)
 
-**Mål:** Max 3–5 meningar per svar. Ett beslut. En rekommendation.
-Inga studiereferenser eller fysiologi-utläggningar om användaren inte frågar.
+**Problem idag:** `prognosis.server.ts` filtrerar löppass `≥ 60 %` av loppdistansen (≥ 12,6 km för halvmara), fallback ≥ 8 km. Har du bara 1 långpass blir prognosen i praktiken bara det passet × Riegel.
 
-**Vad ändras:**
-- `src/lib/coach.server.ts` – skärp `system`-prompten:
-  - "Svara på svenska, max 3–5 meningar."
-  - "Ge ett tydligt beslut + en konkret rekommendation."
-  - "Nämn aldrig studier, författare eller fysiologiska mekanismer
-    om användaren inte explicit frågar 'varför'."
-- `src/lib/briefing.server.ts` – samma stilregler för dagens briefing.
-- `src/lib/coachplan.server.ts` (om `commentary` genereras där) –
-  korta `commentary` till max 2 meningar.
-- ACWR→beslut-översättning: lägg en hjälpfunktion (ren TS, ingen AI)
-  som mappar ACWR-värdet till en mening:
-  - `< 0.8` → "Du kan öka volymen 10–15 % utan ökad skaderisk."
-  - `0.8–1.3` → "Bra balans – håll nuvarande volym."
-  - `> 1.3` → "Sänk volymen 10–20 % den här veckan."
-  Visas i `TrainingLoadCard` / `CoachPlanCard` bredvid siffran.
-- Behåll möjlighet att se längre resonemang: lägg en
-  `<details>Visa resonemang</details>`-toggle i `CoachChatCard` /
-  briefing-kortet så det fördjupade svaret finns kvar men är dolt.
+**Fix i `src/lib/prognosis.server.ts`:**
+- Sänk minsta passlängd till **≥ 5 km** (Riegel är rimligt accurate ner till ~5 km för halvmara).
+- Använd **alla** löppass i fönstret, inte bara ett urval. Räkna ut prognos per pass och **viktning per distans** (längre pass väger mer) i stället för enkel median.
+- Bredda fönstret till **42 dagar** (i dag 28) så fler pass kommer med.
+- Lägg till tempo-tier-justering: snittpace för pass ≥ 10 km ger en separat projektion som väger ~60 %, alla andra pass tillsammans ~40 %. På så sätt syns intervaller/tempo också, inte bara distanspass.
+- Visa i `RacePrognosisCard` hur många pass prognosen bygger på + spridning (t.ex. "12 pass, intervall 2:14–2:21").
 
-**Påverkade filer:**
-- `src/lib/coach.server.ts` (prompt)
-- `src/lib/briefing.server.ts` (prompt)
-- `src/lib/coachplan.server.ts` (prompt, ev.)
-- `src/lib/training.ts` *(ny liten helper för ACWR→text)*
-- `src/components/CoachChatCard.tsx` (collapsible)
-- `src/components/DailyBriefingCard.tsx` (collapsible)
-- `src/components/TrainingLoadCard.tsx` / `CoachPlanCard.tsx`
-  (visa ACWR-beslutstext)
+**Inga DB-ändringar.**
 
 ---
 
-## Steg 2 – Prognos vs mål överst på startsidan
+## 2. Planen ska inte ändras utan ny data
 
-**Mål:** Översta kortet på `/` svarar på frågan
-"Är jag närmare eller längre från mitt mål än förra veckan?"
+**Problem idag:** Varje kall till `/coachplan` triggar potentiellt `generatePlan()`, och `sendMessage` i `coachchat.functions.ts` kallar `generatePlan()` på varje upptäckt val (löp/styrka/promenad/vila), även om du bara skriver "ok jag tar löpning" två gånger. AI:n returnerar olika planer varje gång → upplevs som att den "ändrar utan anledning".
 
-**Layout (nytt `RacePrognosisCard` överst i `src/routes/index.tsx`):**
+**Fix:**
+- I `coachplan.server.ts`, lägg en `shouldRegeneratePlan()` som returnerar `false` om:
+  - Cachad plan finns, **OCH**
+  - Ingen ny Strava-aktivitet sedan `coach_plan.computed_at`, **OCH**
+  - Inget nytt `daily_choices.actual_choice` för i dag sedan dess, **OCH**
+  - Cachen är < 6 h gammal.
+  Annars `true`.
+- `refreshCoachPlan` server-fn: respektera `shouldRegeneratePlan()` om inte body innehåller `{ force: true }`. Lägg en "Uppdatera plan"-knapp i `CoachPlanCard` som skickar `force: true` (explicit användarintent).
+- I `sendMessage` (`coachchat.functions.ts`): kalla bara `generatePlan()` om `detectedChoice` är **annorlunda** än det redan sparade `daily_choices.actual_choice` för i dag. Idag triggas replan även när användaren upprepar samma val.
+- Skydda mot prompt-drift: lägg `temperature: 0` i Claude-anropet i `generatePlan()` så samma indata ger samma plan.
 
-```text
-┌─────────────────────────────────────────┐
-│ Stockholm Halvmaraton · 80 dagar kvar   │
-│                                          │
-│  Mål         Prognos        Gap          │
-│  2:10:00     2:17:09       +7:09         │
-│                                          │
-│  🟡 På väg – 3 sek/km från måltempo      │
-│  Trend senaste 4 v: -0:08/km ↗           │
-└─────────────────────────────────────────┘
-```
-
-**Prognoslogik (ren beräkning, ingen AI):**
-Ny server-funktion `getRacePrognosis` i `src/lib/prognosis.functions.ts`
-+ `prognosis.server.ts`:
-
-1. Hämta `race_goal` (distans, måltempo, datum).
-2. Hämta senaste 28 dagars löpningar från `strava_activities`.
-3. Beräkna **aktuell uthållighetspace**:
-   - Filtrera pass ≥ 60 % av loppdistansen (för halvmara: ≥ 12 km).
-   - Om inga sådana finns: använd median-pace för alla pass
-     ≥ 8 km, justerad med en distansfaktor (Riegel-formeln,
-     exponent 1.06).
-4. **Riegel-projektion** till loppdistansen:
-   `T_race = T_ref * (D_race / D_ref)^1.06`
-5. **CTL-justering:** om CTL ökat senaste 4 v → minska prognostid
-   proportionellt (max 2 %); om minskat → öka (max 2 %).
-6. **Trend:** jämför nuvarande projicerad tid mot samma beräkning
-   gjord för 4 veckor sedan (med passen som fanns då).
-7. Returnera: `{ goalTime, prognosisTime, gapSeconds,
-   trendSecPerKm4w, status: 'on_track' | 'behind' | 'ahead',
-   basedOnRuns: number }`.
-
-**Status-tröskel:**
-- `ahead` om prognos ≤ mål
-- `on_track` om gap ≤ 5 sek/km från måltempo
-- `behind` annars
-
-**Trafikljus:** 🟢 ahead · 🟡 on_track · 🔴 behind.
-
-**Edge cases:**
-- Inget aktivt mål → kortet visas inte.
-- Färre än 3 relevanta pass → visa "Behöver fler pass för prognos
-  (X/3)" istället för siffra.
-
-**Påverkade filer:**
-- `src/lib/prognosis.server.ts` *(ny)*
-- `src/lib/prognosis.functions.ts` *(ny)*
-- `src/components/RacePrognosisCard.tsx` *(ny)*
-- `src/routes/index.tsx` (montera kortet överst)
+**Inga DB-ändringar.**
 
 ---
 
-## Tekniska detaljer
+## 3. Coachen ska komma ihåg flera dagar + sluta gnälla om avvikelser
 
-- Inga DB-migrationer behövs – all data finns redan
-  (`race_goal`, `strava_activities`, `training_load`).
-- Inga nya secrets.
-- Prognosberäkningen är deterministisk (ingen AI-kostnad).
-- Coach-promptändringar minskar token-användning → billigare.
-- Server-fns följer befintligt mönster (`createServerFn` +
-  `supabaseAdmin` via `await import` i `.functions.ts`).
+**Problem idag:** `getTodayConversation` + `sendMessage` skickar bara dagens meddelanden till modellen. Allt från i går är borta. Och `coachplan` matar in "AVVIKELSER SENASTE 14 DAGAR" + "VARNING ... avvikit 3 dagar i rad" som coachen sedan rapar upp som klagomål.
+
+**Fix i `coachchat.functions.ts`:**
+- Hämta konversationshistorik **7 dagar bakåt**, inte bara `eq("date", dateStr)`. Skicka som `messages`-array med datum-prefix på äldre meddelanden ("[i går 18:32] …") så modellen vet vad som sas när.
+- Lägg en kort "MINNE"-sektion i `liveContext` med 3–5 punkter sammanfattat från de senaste dagarnas konversation (kan tas direkt från senaste 14 meddelanden utan AI-sammanfattning – ren strängklippning räcker som start).
+- Lägg till explicit regel i `system`-prompten:
+  > "Du minns vad ni pratade om de senaste 7 dagarna. Referera till tidigare beslut när det är relevant. Upprepa aldrig samma fråga eller varning som redan besvarats."
+
+**Fix i `coachplan.server.ts` (planens commentary):**
+- Ta bort den nuvarande "AVVIKELSER"-listan och `consecutiveDeviations >= 3`-varningen ur prompten. Avvikelser från en AI-genererad plan är **inte** en avvikelse – det är ett val. Behåll i stället en neutral rad: "Pers senaste val: löpning/styrka/vila" utan värdeladdning.
+- Lägg regel i `system`:
+  > "Behandla {{NAME}}s val som data, inte som olydnad. Kommentera inte att planen 'inte följdes'. Anpassa nästa pass utifrån vad som faktiskt gjordes."
+
+---
 
 ## Ordning
-1. Steg 2 först (Prognoskortet) – störst visuell effekt, ingen
-   risk att förändra befintlig AI-output.
-2. Steg 1 sedan (prompt-skärpning + ACWR-text + collapsible) –
-   iterativt, lätt att finjustera när vi ser hur korta svar känns.
+1. **#3 (minne + sluta gnälla)** – minst risk, störst upplevd skillnad direkt.
+2. **#2 (stabilare plan)** – tar bort onödiga AI-anrop och slumpvis omplanering.
+3. **#1 (bredare prognos)** – behöver lite mer omsorg kring viktning/visualisering.
 
-## Inte med i denna sprint
-- Formtrend med zon-data (kräver Strava streams-hämtning).
-- Adaptiv plan (`weekly_plans`/`daily_adjustments`-logik).
-- Söndagsrapport.
-- Personalisering på split-nivå.
+## Filer som ändras
+- `src/lib/coachchat.functions.ts` (historik 7 d, minne, ta bort spurious replan)
+- `src/lib/coachplan.server.ts` (`shouldRegeneratePlan`, temperature 0, ta bort avvikelse-skäll)
+- `src/lib/coachplan.functions.ts` (force-flagga på `refreshCoachPlan`)
+- `src/lib/prognosis.server.ts` (≥5 km, viktad projektion, 42 d, tier-blend)
+- `src/components/CoachPlanCard.tsx` ("Uppdatera plan"-knapp)
+- `src/components/RacePrognosisCard.tsx` (visa antal pass + spridning)
+
+## Inte med
+- Egentlig AI-sammanfattning av historik (för dyrt nu – ren strängklippning räcker).
+- Adaptiva veckoplaner från `weekly_plans`/`daily_adjustments`.
+- Zon-data per pass.
 
 Säg till så kör vi.

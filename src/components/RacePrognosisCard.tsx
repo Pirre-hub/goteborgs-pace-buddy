@@ -143,18 +143,20 @@ export function RacePrognosisCard() {
 
         {insufficient ? (
           <p className="text-xs text-muted-foreground">
-            {data.insufficient_reason ?? "Behöver fler långpass för en prognos."}
+            {data.insufficient_reason ?? "Behöver fler löppass för en prognos."}
           </p>
         ) : (
-          <div className="flex items-center gap-2 text-xs">
-            <TrendIcon className={`h-3.5 w-3.5 ${trendTone}`} />
-            <span className={trendTone}>{trendText}</span>
-            <span className="text-muted-foreground">
-              · baserat på {data.based_on_runs} pass
-              {data.ref_distance_km != null
-                ? ` (median ${data.ref_distance_km} km)`
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-xs">
+              <TrendIcon className={`h-3.5 w-3.5 ${trendTone}`} />
+              <span className={trendTone}>{trendText}</span>
+            </div>
+            <div className="text-[11px] text-muted-foreground tabular-nums">
+              Baserat på {data.based_on_runs} pass (snitt {data.ref_distance_km} km)
+              {data.min_time_sec != null && data.max_time_sec != null
+                ? ` · spridning ${formatDuration(data.min_time_sec)}–${formatDuration(data.max_time_sec)}`
                 : ""}
-            </span>
+            </div>
           </div>
         )}
       </CardContent>

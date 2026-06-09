@@ -89,7 +89,7 @@ export function CoachPlanCard() {
   });
 
   const refreshMut = useMutation({
-    mutationFn: () => refreshFn(),
+    mutationFn: (vars?: { force?: boolean }) => refreshFn({ data: vars ?? {} }),
     onSuccess: (data) => {
       qc.setQueryData(["coach-plan"], data);
       qc.invalidateQueries({ queryKey: ["coach-plan"] });
@@ -114,7 +114,7 @@ export function CoachPlanCard() {
         <Button
           size="sm"
           variant="outline"
-          onClick={() => refreshMut.mutate()}
+          onClick={() => refreshMut.mutate({ force: true })}
           disabled={refreshMut.isPending}
         >
           {refreshMut.isPending ? (
@@ -122,7 +122,7 @@ export function CoachPlanCard() {
               <Loader2 className="h-4 w-4 animate-spin mr-1" /> Tänker…
             </>
           ) : plan ? (
-            "Uppdatera coach"
+            "Uppdatera plan"
           ) : (
             "Generera"
           )}

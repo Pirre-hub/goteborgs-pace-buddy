@@ -219,9 +219,54 @@ function toLocalDateString(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
-export async function generatePlan(): Promise<CoachPlan> {
+export async function shouldRegeneratePlan(): Promise<boolean> {
+  const cached = await getCachedPlan();
+  if (!cached) return true;
+  const computedAt = new Date(cached.computed_at).getTime();
+  const ageMs = Date.now() - computedAt;
+  // Tvinga om planen är äldre än 6 h.
+  if (ageMs > 6 * 60 * 60 * 1000) return true;
+  // Ny Strava-aktivitet sedan senaste plan?
+  const { data: latestAct } = await supabaseAdmin
+    .from("strava_activities")
+    .select("start_date_local")
+    .order("start_date_local", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (
+    latestAct?.start_date_local &&
+    new Date(latestAct.start_date_local as string).getTime() > computedAt
+  ) {
+    return true;
+  }
+  // Nytt val (daily_choices) sedan senaste plan?
+  const { data: latestChoice } = await supabaseAdmin
+    .from("daily_choices")
+    .select("updated_at")
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (
+    latestChoice?.updated_at &&
+    new Date(latestChoice.updated_at as string).getTime() > computedAt
+  ) {
+    return true;
+  }
+  return false;
+}
+
+export async function generatePlan(opts?: { force?: boolean }): Promise<CoachPlan> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY saknas");
+
+  // Skip om ingenting nytt har hänt — planen ska inte ändra sig utan ny data.
+  if (!opts?.force) {
+    const needsRegen = await shouldRegeneratePlan();
+    if (!needsRegen) {
+      const cached = await getCachedPlan();
+      if (cached) return cached;
+    }
+  }
 
   // Ensure the coach is based on the latest Strava data even if the webhook
   // has not delivered or processed the newest activity yet.
@@ -244,29 +289,15 @@ export async function generatePlan(): Promise<CoachPlan> {
       .from("daily_choices")
       .select("date, recommended_type, actual_choice")
       .order("date", { ascending: false })
-      .limit(14),
+      .limit(7),
   ]);
 
-  const deviations = (choices ?? [])
-    .filter(
-      (c) =>
-        c.actual_choice &&
-        c.actual_choice !== c.recommended_type &&
-        c.actual_choice !== "rest",
-    )
-    .map(
-      (c) =>
-        `${c.date}: rekommenderade ${c.recommended_type}, valde ${c.actual_choice}`,
-    );
+  // Neutralt: lista senaste valen som data, inte som "avvikelser".
+  const recentChoiceLines = (choices ?? [])
+    .filter((c) => c.actual_choice)
+    .slice(0, 5)
+    .map((c) => `${c.date}: ${c.actual_choice}`);
 
-  const consecutiveDeviations = (() => {
-    let count = 0;
-    for (const c of choices ?? []) {
-      if (c.actual_choice && c.actual_choice !== c.recommended_type) count++;
-      else break;
-    }
-    return count;
-  })();
 
   const goalPace = goal?.goal_pace_sec ?? 360;
   const runs = (acts ?? []).map((r) => ({
@@ -626,7 +657,7 @@ ${upcomingDates.join("\n")}
 
 Generera commentary (MAX 2 meningar – ett beslut + en konkret rekommendation, inga studier eller fysiologiska termer) + 14 pass via rolling_plan. Varje purpose ska vara EN mening som förklarar varför just detta pass just denna dag.
 
-KONTROLL INNAN DU SVARAR: räkna dina 14 dagar – det MÅSTE finnas exakt 2 gympass (type innehåller "Gym") och max 6 löppass totalt. Resten är vila. Om inte – gör om planen.${deviations.length > 0 ? `\n\nAVVIKELSER SENASTE 14 DAGAR:\n${deviations.join("\n")}` : ""}${consecutiveDeviations >= 3 ? `\n\nVARNING: Atleten har avvikit från rekommendationen ${consecutiveDeviations} dagar i rad. Påtala detta direkt i commentary – fråga om det är skada, trötthet eller motivation och anpassa planen därefter.` : ""}`;
+KONTROLL INNAN DU SVARAR: räkna dina 14 dagar – det MÅSTE finnas exakt 2 gympass (type innehåller "Gym") och max 6 löppass totalt. Resten är vila. Om inte – gör om planen.${recentChoiceLines.length > 0 ? `\n\nSENASTE VAL (data, inte avvikelser):\n${recentChoiceLines.join("\n")}\nBehandla dessa som information om vad atleten faktiskt gjort. Klaga aldrig på att planen inte följdes – anpassa istället nästa pass.` : ""}`;
 
 
   const res = await fetch(AI_URL, {
@@ -639,6 +670,7 @@ KONTROLL INNAN DU SVARAR: räkna dina 14 dagar – det MÅSTE finnas exakt 2 gym
     body: JSON.stringify({
       model: AI_MODEL,
       max_tokens: 8192,
+      temperature: 0,
       system: personalizePrompt(system),
       messages: [{ role: "user", content: personalizePrompt(user) }],
       tools: [TOOL],
