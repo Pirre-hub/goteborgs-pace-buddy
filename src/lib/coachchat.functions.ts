@@ -237,9 +237,21 @@ ${aggregateStr}
 PASS SENASTE 28 DAGARNA (från Strava):
 ${recentActsStr}
 
+${weeklyPlan ? `VECKANS TRÄNINGSPLAN (samma plan som visas i ACWR-coachen):
+Strategi: ${weeklyPlan.strategy}
+Coach-kommentar: ${weeklyPlan.commentary}
+Pass denna vecka:
+${(Array.isArray(weeklyPlan.days) ? (weeklyPlan.days as Array<{weekday?: string; date?: string; type?: string; distance_km?: number | null; target_pace?: string}>) : [])
+  .map((d) => `- ${d.weekday ?? ""} ${d.date ?? ""}: ${d.type ?? ""}${d.distance_km ? ` ${d.distance_km}km` : ""}${d.target_pace ? ` @ ${d.target_pace}` : ""}`)
+  .join("\n")}` : "VECKANS TRÄNINGSPLAN: Ingen veckoplan genererad ännu."}
 
+${coachPlanRow ? `ACWR-COACHENS DAGSPLAN (uppdaterad ${new Date(coachPlanRow.computed_at as string).toLocaleString("sv-SE")}):
+ACWR: ${coachPlanRow.acwr ?? "–"} (${coachPlanRow.acwr_zone ?? "–"})
+Kommentar: ${coachPlanRow.commentary}
+Plan: ${JSON.stringify(coachPlanRow.plan)}` : ""}
 
 `;
+
 
 
 
