@@ -11,11 +11,11 @@ export const getCoachPlan = createServerFn({ method: "GET" }).handler(
   },
 );
 
-export const refreshCoachPlan = createServerFn({ method: "POST" }).handler(
-  async () => {
-    return { plan: await generatePlan() };
-  },
-);
+export const refreshCoachPlan = createServerFn({ method: "POST" })
+  .inputValidator((data: { force?: boolean } | undefined) => data ?? {})
+  .handler(async ({ data }) => {
+    return { plan: await generatePlan({ force: !!data?.force }) };
+  });
 
 export const getTrainingLoad = createServerFn({ method: "GET" }).handler(
   async () => {
