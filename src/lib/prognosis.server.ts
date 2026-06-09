@@ -28,6 +28,8 @@ export type RacePrognosis = {
   trend_sec_per_km_4w: number | null; // negative = improving
   based_on_runs: number;
   ref_distance_km: number | null;
+  min_time_sec?: number | null;
+  max_time_sec?: number | null;
   insufficient_reason?: string;
 };
 
