@@ -269,9 +269,9 @@ ATLETENS VAL ÄR DATA, INTE OLYDNAD:
 
     const replanMatch = responseText.match(/REPLAN:(\{[\s\S]*\})/);
     const cleanResponse = responseText.replace(/\s*REPLAN:\{[\s\S]*\}\s*$/, "").trim();
-    // Always replan when the user explicitly chose a workout type – the
-    // schedule needs to reflect that choice immediately.
-    const triggersReplan = !!replanMatch || !!detectedChoice;
+    // Replan bara när valet faktiskt ändrats — annars triggar varje upprepning
+    // (t.ex. "ok jag tar löpning" två gånger) en ny plan utan ny data.
+    const triggersReplan = !!replanMatch || choiceChanged;
 
     await supabaseAdmin.from("coach_conversations").insert({
       date: dateStr,
@@ -282,7 +282,7 @@ ATLETENS VAL ÄR DATA, INTE OLYDNAD:
 
     if (triggersReplan) {
       try {
-        await generatePlan();
+        await generatePlan({ data: { force: true } });
       } catch (e) {
         console.error("replan failed", e);
       }
