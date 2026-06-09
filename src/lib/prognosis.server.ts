@@ -36,45 +36,74 @@ function isRun(r: { sport_type: string | null; type: string | null }) {
   return s.includes("run");
 }
 
-function median(nums: number[]): number {
-  const a = [...nums].sort((x, y) => x - y);
-  const n = a.length;
-  if (n === 0) return 0;
-  return n % 2 ? a[(n - 1) / 2] : (a[n / 2 - 1] + a[n / 2]) / 2;
-}
-
 function projectFromRuns(
   runs: RunRow[],
   raceDistanceKm: number,
-): { timeSec: number; basedOn: number; refDistKm: number } | null {
-  const minRef = Math.max(raceDistanceKm * 0.6, 8); // halvmara → 12.6 km, fallback ≥ 8 km
+): {
+  timeSec: number;
+  basedOn: number;
+  refDistKm: number;
+  minTime: number;
+  maxTime: number;
+} | null {
+  // Sänkt minsta-passlängd till 5 km så fler pass kommer med (Riegel är rimligt
+  // träffsäker ned till ~5 km för halvmara).
   const candidates = runs
     .filter(isRun)
     .map((r) => ({
       distKm: Number(r.distance) / 1000,
       sec: Number(r.moving_time),
     }))
-    .filter((r) => r.distKm >= minRef && r.sec > 0);
+    .filter((r) => r.distKm >= 5 && r.sec > 0);
 
-  let pool = candidates;
-  if (pool.length === 0) {
-    pool = runs
-      .filter(isRun)
-      .map((r) => ({
-        distKm: Number(r.distance) / 1000,
-        sec: Number(r.moving_time),
-      }))
-      .filter((r) => r.distKm >= 8 && r.sec > 0);
+  if (candidates.length === 0) return null;
+
+  // Tier-blend: långpass (≥10 km) väger 60 %, korta pass 40 %.
+  // Inom varje tier distansviktad average — längre pass dominerar.
+  const longs = candidates.filter((c) => c.distKm >= 10);
+  const shorts = candidates.filter((c) => c.distKm < 10);
+
+  const weightedProjection = (
+    pool: { distKm: number; sec: number }[],
+  ): { time: number; weight: number } => {
+    if (pool.length === 0) return { time: 0, weight: 0 };
+    let wSum = 0;
+    let tSum = 0;
+    for (const r of pool) {
+      const projected = r.sec * Math.pow(raceDistanceKm / r.distKm, RIEGEL_EXPONENT);
+      const w = r.distKm; // distansviktat
+      tSum += projected * w;
+      wSum += w;
+    }
+    return { time: tSum / wSum, weight: wSum };
+  };
+
+  const longProj = weightedProjection(longs);
+  const shortProj = weightedProjection(shorts);
+
+  let timeSec: number;
+  if (longProj.weight > 0 && shortProj.weight > 0) {
+    timeSec = longProj.time * 0.6 + shortProj.time * 0.4;
+  } else if (longProj.weight > 0) {
+    timeSec = longProj.time;
+  } else {
+    timeSec = shortProj.time;
   }
-  if (pool.length === 0) return null;
 
-  const projections = pool.map((r) =>
-    r.sec * Math.pow(raceDistanceKm / r.distKm, RIEGEL_EXPONENT),
+  const allProjections = candidates.map(
+    (r) => r.sec * Math.pow(raceDistanceKm / r.distKm, RIEGEL_EXPONENT),
   );
+  const minTime = Math.min(...allProjections);
+  const maxTime = Math.max(...allProjections);
+  const refDistKm =
+    candidates.reduce((s, r) => s + r.distKm, 0) / candidates.length;
+
   return {
-    timeSec: median(projections),
-    basedOn: pool.length,
-    refDistKm: median(pool.map((p) => p.distKm)),
+    timeSec,
+    basedOn: candidates.length,
+    refDistKm,
+    minTime,
+    maxTime,
   };
 }
 
