@@ -89,7 +89,7 @@ export function CoachPlanCard() {
   });
 
   const refreshMut = useMutation({
-    mutationFn: () => refreshFn(),
+    mutationFn: (vars?: { force?: boolean }) => refreshFn({ data: vars ?? {} }),
     onSuccess: (data) => {
       qc.setQueryData(["coach-plan"], data);
       qc.invalidateQueries({ queryKey: ["coach-plan"] });
