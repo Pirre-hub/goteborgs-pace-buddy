@@ -64,19 +64,29 @@ export const sendMessage = createServerFn({ method: "POST" })
     else if (/\b(promenad|promenera|går\s|walk)/.test(lower)) detectedChoice = "walking";
     else if (/\b(vila|vilar|vilodag|rest)/.test(lower)) detectedChoice = "rest";
 
+    // Bara persistera om valet faktiskt ändrats (slipper trigga replan i onödan).
+    let choiceChanged = false;
     if (detectedChoice) {
-      await supabaseAdmin
+      const { data: existing } = await supabaseAdmin
         .from("daily_choices")
-        .upsert(
-          {
-            date: dateStr,
-            recommended_type: planContext.todayPlan.slice(0, 64) || "unknown",
-            actual_choice: detectedChoice,
-            note: message,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "date" },
-        );
+        .select("actual_choice")
+        .eq("date", dateStr)
+        .maybeSingle();
+      choiceChanged = existing?.actual_choice !== detectedChoice;
+      if (choiceChanged) {
+        await supabaseAdmin
+          .from("daily_choices")
+          .upsert(
+            {
+              date: dateStr,
+              recommended_type: planContext.todayPlan.slice(0, 64) || "unknown",
+              actual_choice: detectedChoice,
+              note: message,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "date" },
+          );
+      }
     }
 
     await supabaseAdmin.from("coach_conversations").insert({
@@ -85,21 +95,37 @@ export const sendMessage = createServerFn({ method: "POST" })
       content: message,
     });
 
-
+    // Hämta 7 dagars historik så coachen minns tidigare beslut.
+    const since = new Date();
+    since.setDate(since.getDate() - 7);
+    const sinceStr = `${since.getFullYear()}-${(since.getMonth() + 1)
+      .toString()
+      .padStart(2, "0")}-${since.getDate().toString().padStart(2, "0")}`;
     const { data: history } = await supabaseAdmin
       .from("coach_conversations")
-      .select("role, content")
-      .eq("date", dateStr)
+      .select("role, content, date, created_at")
+      .gte("date", sinceStr)
       .order("created_at", { ascending: true });
 
-    const messages = ((history ?? []) as { role: string; content: string }[]).map(
-      (m) => ({
+    const weekdayShort = ["sön", "mån", "tis", "ons", "tor", "fre", "lör"];
+    const messages = ((history ?? []) as {
+      role: string;
+      content: string;
+      date: string;
+      created_at: string;
+    }[]).map((m) => {
+      const isToday = m.date === dateStr;
+      const d = new Date(m.created_at);
+      const prefix = isToday
+        ? ""
+        : `[${weekdayShort[d.getDay()]} ${m.date.slice(5)}] `;
+      return {
         role: (m.role === "coach" ? "assistant" : "user") as
           | "user"
           | "assistant",
-        content: m.content,
-      }),
-    );
+        content: prefix + m.content,
+      };
+    });
 
     const tsbLabel =
       planContext.tsb != null
