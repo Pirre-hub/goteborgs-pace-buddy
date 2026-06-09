@@ -219,7 +219,43 @@ function toLocalDateString(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
-export async function generatePlan(): Promise<CoachPlan> {
+export async function shouldRegeneratePlan(): Promise<boolean> {
+  const cached = await getCachedPlan();
+  if (!cached) return true;
+  const computedAt = new Date(cached.computed_at).getTime();
+  const ageMs = Date.now() - computedAt;
+  // Tvinga om planen är äldre än 6 h.
+  if (ageMs > 6 * 60 * 60 * 1000) return true;
+  // Ny Strava-aktivitet sedan senaste plan?
+  const { data: latestAct } = await supabaseAdmin
+    .from("strava_activities")
+    .select("start_date_local")
+    .order("start_date_local", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (
+    latestAct?.start_date_local &&
+    new Date(latestAct.start_date_local as string).getTime() > computedAt
+  ) {
+    return true;
+  }
+  // Nytt val (daily_choices) sedan senaste plan?
+  const { data: latestChoice } = await supabaseAdmin
+    .from("daily_choices")
+    .select("updated_at")
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (
+    latestChoice?.updated_at &&
+    new Date(latestChoice.updated_at as string).getTime() > computedAt
+  ) {
+    return true;
+  }
+  return false;
+}
+
+export async function generatePlan(opts?: { force?: boolean }): Promise<CoachPlan> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY saknas");
 
