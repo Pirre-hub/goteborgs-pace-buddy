@@ -24,15 +24,25 @@ function todayStr() {
 export const getTodayConversation = createServerFn({ method: "GET" }).handler(
   async () => {
     const dateStr = todayStr();
+    // Hämta 7 dagar bakåt så coachen har minne av tidigare beslut.
+    const since = new Date();
+    since.setDate(since.getDate() - 7);
+    const sinceStr = `${since.getFullYear()}-${(since.getMonth() + 1)
+      .toString()
+      .padStart(2, "0")}-${since.getDate().toString().padStart(2, "0")}`;
     const { data } = await supabaseAdmin
       .from("coach_conversations")
-      .select("role, content, created_at")
-      .eq("date", dateStr)
+      .select("role, content, created_at, date")
+      .gte("date", sinceStr)
       .order("created_at", { ascending: true });
     return {
-      messages: ((data ?? []) as { role: string; content: string }[]).map(
-        (m) => ({ role: m.role as "user" | "coach", content: m.content }),
-      ) as Message[],
+      messages: ((data ?? []) as { role: string; content: string; date: string }[]).map(
+        (m) => ({
+          role: m.role as "user" | "coach",
+          content: m.content,
+          date: m.date,
+        }),
+      ),
       date: dateStr,
     };
   },
