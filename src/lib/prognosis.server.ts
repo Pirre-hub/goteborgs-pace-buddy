@@ -151,16 +151,18 @@ export async function getRacePrognosis(): Promise<RacePrognosis> {
   );
 
   const now = new Date();
-  const since28 = new Date(now.getTime() - 28 * 86400000);
-  const since56 = new Date(now.getTime() - 56 * 86400000);
+  // Bredare fönster (42 d) så fler pass kommer med, plus jämförelsefönster 42–84 d
+  // för 4-veckors-trend.
+  const since42 = new Date(now.getTime() - 42 * 86400000);
+  const since84 = new Date(now.getTime() - 84 * 86400000);
   const fourWeeksAgo = new Date(now.getTime() - 28 * 86400000);
 
   const { data: acts } = await supabaseAdmin
     .from("strava_activities")
     .select("start_date_local, distance, moving_time, sport_type, type")
-    .gte("start_date_local", since56.toISOString())
+    .gte("start_date_local", since84.toISOString())
     .order("start_date_local", { ascending: false })
-    .limit(200);
+    .limit(300);
 
   const runs: RunRow[] = (acts ?? []).map((a) => ({
     start_date_local: String(a.start_date_local),
@@ -171,11 +173,11 @@ export async function getRacePrognosis(): Promise<RacePrognosis> {
   }));
 
   const recent = runs.filter(
-    (r) => new Date(r.start_date_local) >= since28,
+    (r) => new Date(r.start_date_local) >= since42,
   );
   const olderWindow = runs.filter((r) => {
     const d = new Date(r.start_date_local);
-    return d < fourWeeksAgo && d >= since56;
+    return d < fourWeeksAgo && d >= since84;
   });
 
   const proj = projectFromRuns(recent, distanceKm);
@@ -198,7 +200,7 @@ export async function getRacePrognosis(): Promise<RacePrognosis> {
       based_on_runs: 0,
       ref_distance_km: null,
       insufficient_reason:
-        "Behöver minst ett pass på ≥ 8 km senaste 4 veckorna för prognos.",
+        "Behöver minst ett löppass på ≥ 5 km senaste 6 veckorna för prognos.",
     };
   }
 
@@ -207,7 +209,7 @@ export async function getRacePrognosis(): Promise<RacePrognosis> {
   const ctl28 = await fetchCtl(fourWeeksAgo);
   let adjustedTime = proj.timeSec;
   if (ctlNow != null && ctl28 != null && ctl28 > 0) {
-    const ctlDelta = (ctlNow - ctl28) / ctl28; // fraction
+    const ctlDelta = (ctlNow - ctl28) / ctl28;
     const adj = Math.max(-0.02, Math.min(0.02, -ctlDelta * 0.5));
     adjustedTime = proj.timeSec * (1 + adj);
   }
@@ -221,12 +223,11 @@ export async function getRacePrognosis(): Promise<RacePrognosis> {
   else if (paceGap <= 5) status = "on_track";
   else status = "behind";
 
-  // 4w trend: same calc, but for runs that existed 4 weeks ago
   let trendSecPerKm: number | null = null;
   const oldProj = projectFromRuns(olderWindow, distanceKm);
   if (oldProj && oldProj.basedOn >= 1) {
     const oldPace = oldProj.timeSec / distanceKm;
-    trendSecPerKm = prognosisPace - oldPace; // negative = improvement
+    trendSecPerKm = prognosisPace - oldPace;
   }
 
   return {
@@ -246,5 +247,7 @@ export async function getRacePrognosis(): Promise<RacePrognosis> {
     trend_sec_per_km_4w: trendSecPerKm != null ? Math.round(trendSecPerKm) : null,
     based_on_runs: proj.basedOn,
     ref_distance_km: +proj.refDistKm.toFixed(1),
+    min_time_sec: Math.round(proj.minTime),
+    max_time_sec: Math.round(proj.maxTime),
   };
 }
