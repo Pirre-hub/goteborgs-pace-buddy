@@ -259,6 +259,15 @@ export async function generatePlan(opts?: { force?: boolean }): Promise<CoachPla
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY saknas");
 
+  // Skip om ingenting nytt har hänt — planen ska inte ändra sig utan ny data.
+  if (!opts?.force) {
+    const needsRegen = await shouldRegeneratePlan();
+    if (!needsRegen) {
+      const cached = await getCachedPlan();
+      if (cached) return cached;
+    }
+  }
+
   // Ensure the coach is based on the latest Strava data even if the webhook
   // has not delivered or processed the newest activity yet.
   await backfillRecentRuns();
@@ -280,29 +289,15 @@ export async function generatePlan(opts?: { force?: boolean }): Promise<CoachPla
       .from("daily_choices")
       .select("date, recommended_type, actual_choice")
       .order("date", { ascending: false })
-      .limit(14),
+      .limit(7),
   ]);
 
-  const deviations = (choices ?? [])
-    .filter(
-      (c) =>
-        c.actual_choice &&
-        c.actual_choice !== c.recommended_type &&
-        c.actual_choice !== "rest",
-    )
-    .map(
-      (c) =>
-        `${c.date}: rekommenderade ${c.recommended_type}, valde ${c.actual_choice}`,
-    );
+  // Neutralt: lista senaste valen som data, inte som "avvikelser".
+  const recentChoiceLines = (choices ?? [])
+    .filter((c) => c.actual_choice)
+    .slice(0, 5)
+    .map((c) => `${c.date}: ${c.actual_choice}`);
 
-  const consecutiveDeviations = (() => {
-    let count = 0;
-    for (const c of choices ?? []) {
-      if (c.actual_choice && c.actual_choice !== c.recommended_type) count++;
-      else break;
-    }
-    return count;
-  })();
 
   const goalPace = goal?.goal_pace_sec ?? 360;
   const runs = (acts ?? []).map((r) => ({
