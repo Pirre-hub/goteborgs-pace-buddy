@@ -154,6 +154,22 @@ export const sendMessage = createServerFn({ method: "POST" })
       .select("distance, moving_time, sport_type, start_date_local, average_heartrate")
       .order("start_date_local", { ascending: false });
 
+    // Hämta veckoplanen så chat-coachen ser samma plan som ACWR-coachen.
+    const { data: weeklyPlan } = await supabaseAdmin
+      .from("weekly_plans")
+      .select("strategy, commentary, days")
+      .order("week_start", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    // Hämta även coach_plan (ACWR-coachens dags-/veckoplan) för full samsyn.
+    const { data: coachPlanRow } = await supabaseAdmin
+      .from("coach_plan")
+      .select("commentary, plan, acwr, acwr_zone, computed_at")
+      .eq("id", 1)
+      .maybeSingle();
+
+
     const weekdayNamesSv = ["söndag", "måndag", "tisdag", "onsdag", "torsdag", "fredag", "lördag"];
     const todayLabel = `${weekdayNamesSv[now.getDay()]} ${now.toLocaleDateString("sv-SE")}`;
 
