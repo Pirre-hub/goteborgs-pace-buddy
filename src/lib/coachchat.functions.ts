@@ -154,6 +154,22 @@ export const sendMessage = createServerFn({ method: "POST" })
       .select("distance, moving_time, sport_type, start_date_local, average_heartrate")
       .order("start_date_local", { ascending: false });
 
+    // Hämta veckoplanen så chat-coachen ser samma plan som ACWR-coachen.
+    const { data: weeklyPlan } = await supabaseAdmin
+      .from("weekly_plans")
+      .select("strategy, commentary, days")
+      .order("week_start", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    // Hämta även coach_plan (ACWR-coachens dags-/veckoplan) för full samsyn.
+    const { data: coachPlanRow } = await supabaseAdmin
+      .from("coach_plan")
+      .select("commentary, plan, acwr, acwr_zone, computed_at")
+      .eq("id", 1)
+      .maybeSingle();
+
+
     const weekdayNamesSv = ["söndag", "måndag", "tisdag", "onsdag", "torsdag", "fredag", "lördag"];
     const todayLabel = `${weekdayNamesSv[now.getDay()]} ${now.toLocaleDateString("sv-SE")}`;
 
@@ -221,9 +237,21 @@ ${aggregateStr}
 PASS SENASTE 28 DAGARNA (från Strava):
 ${recentActsStr}
 
+${weeklyPlan ? `VECKANS TRÄNINGSPLAN (samma plan som visas i ACWR-coachen):
+Strategi: ${weeklyPlan.strategy}
+Coach-kommentar: ${weeklyPlan.commentary}
+Pass denna vecka:
+${(Array.isArray(weeklyPlan.days) ? (weeklyPlan.days as Array<{weekday?: string; date?: string; type?: string; distance_km?: number | null; target_pace?: string}>) : [])
+  .map((d) => `- ${d.weekday ?? ""} ${d.date ?? ""}: ${d.type ?? ""}${d.distance_km ? ` ${d.distance_km}km` : ""}${d.target_pace ? ` @ ${d.target_pace}` : ""}`)
+  .join("\n")}` : "VECKANS TRÄNINGSPLAN: Ingen veckoplan genererad ännu."}
 
+${coachPlanRow ? `ACWR-COACHENS DAGSPLAN (uppdaterad ${new Date(coachPlanRow.computed_at as string).toLocaleString("sv-SE")}):
+ACWR: ${coachPlanRow.acwr ?? "–"} (${coachPlanRow.acwr_zone ?? "–"})
+Kommentar: ${coachPlanRow.commentary}
+Plan: ${JSON.stringify(coachPlanRow.plan)}` : ""}
 
 `;
+
 
 
 
@@ -239,6 +267,12 @@ MINNE OCH KONTINUITET:
 - Du har full tillgång till de senaste 7 dagarnas konversation ovan (äldre meddelanden är prefixade med [veckodag MM-DD]).
 - Referera till tidigare beslut och resonemang när det är relevant ("som vi sa i går", "du nämnde i tisdags att…").
 - Upprepa ALDRIG samma fråga, råd eller varning som redan besvarats de senaste dagarna.
+
+SAMSYN MED VECKOPLANEN OCH ACWR-COACHEN:
+- Du ser samma veckoplan och ACWR-dagsplan som visas i appens andra coach-kort. Använd den.
+- När {{NAME}} frågar "vad rekommenderade du på onsdag?" eller "varför intervaller idag?" → svara från VECKANS TRÄNINGSPLAN ovan, hitta inte på en ny plan.
+- Om du vill avvika från veckoplanen: säg det explicit ("planen säger X, men jag rekommenderar Y idag för att…").
+
 
 ATLETENS VAL ÄR DATA, INTE OLYDNAD:
 - Om {{NAME}} valde löpning när planen sa vila (eller tvärtom) → behandla det som ett val, inte en avvikelse.
