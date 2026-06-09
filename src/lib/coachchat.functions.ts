@@ -282,7 +282,7 @@ ATLETENS VAL ÄR DATA, INTE OLYDNAD:
 
     if (triggersReplan) {
       try {
-        await generatePlan({ data: { force: true } });
+        await generatePlan({ force: true });
       } catch (e) {
         console.error("replan failed", e);
       }
