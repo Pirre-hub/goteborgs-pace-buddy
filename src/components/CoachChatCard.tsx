@@ -92,90 +92,90 @@ export function CoachChatCard({ planContext }: { planContext: PlanContext }) {
   };
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-center justify-between">
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="text-sm font-semibold flex items-center gap-2">
           <span>💬 Prata med coachen</span>
-          <div className="flex items-center gap-2">
-            {messages.length > 0 && (
-              <button
-                onClick={() => clearMut.mutate()}
-                disabled={clearMut.isPending}
-                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors"
-                aria-label="Rensa konversation"
-                title="Rensa konversation"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                Rensa
-              </button>
-            )}
-            <span className="text-xs font-normal text-muted-foreground">
-              {format(new Date(), "d MMM", { locale: sv })}
-            </span>
-          </div>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {showQuick && (
-          <div className="flex flex-wrap gap-2">
-            {QUICK_CHOICES.map((c) => (
-              <button
-                key={c.label}
-                onClick={() => send(c.text)}
-                className="rounded-full border px-3 py-1.5 text-xs hover:bg-muted transition-colors"
-              >
-                {c.emoji} {c.label}
-              </button>
-            ))}
-          </div>
-        )}
+        </div>
+        <div className="flex items-center gap-2">
+          {messages.length > 0 && (
+            <button
+              onClick={() => clearMut.mutate()}
+              disabled={clearMut.isPending}
+              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors"
+              aria-label="Rensa konversation"
+              title="Rensa konversation"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Rensa
+            </button>
+          )}
+          <span className="text-xs font-normal text-muted-foreground">
+            {format(new Date(), "d MMM", { locale: sv })}
+          </span>
+        </div>
+      </div>
 
-        {(messages.length > 0 || pendingUser || mut.isPending) && (
-          <div
-            ref={scrollRef}
-            className="max-h-80 overflow-y-auto space-y-2 rounded-lg bg-muted/30 p-3"
-          >
-            {messages.map((m, i) => (
-              <ChatBubble key={i} role={m.role} content={m.content} />
-            ))}
-            {pendingUser && <ChatBubble role="user" content={pendingUser} />}
-            {mut.isPending && (
-              <div className="flex items-center gap-1 px-3 py-2 w-fit rounded-2xl bg-background border">
-                <Dot delay="0ms" />
-                <Dot delay="150ms" />
-                <Dot delay="300ms" />
-              </div>
-            )}
-          </div>
-        )}
+      {showQuick && (
+        <div className="flex flex-wrap gap-2">
+          {QUICK_CHOICES.map((c) => (
+            <button
+              key={c.label}
+              onClick={() => send(c.text)}
+              className="rounded-full border px-3 py-1.5 text-xs hover:bg-muted transition-colors"
+            >
+              {c.emoji} {c.label}
+            </button>
+          ))}
+        </div>
+      )}
 
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            send(input);
-          }}
-          className="flex gap-2"
+      {(messages.length > 0 || pendingUser || mut.isPending) && (
+        <div
+          ref={scrollRef}
+          className="max-h-80 overflow-y-auto space-y-2 rounded-lg bg-muted/30 p-3"
         >
-          <Input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Berätta hur du känner dig eller vad du vill göra…"
-            disabled={mut.isPending}
-            className="flex-1"
-          />
-          <Button
-            type="submit"
-            size="icon"
-            disabled={!input.trim() || mut.isPending}
-            aria-label="Skicka"
-          >
-            <Send className="h-4 w-4" />
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+          {messages.map((m, i) => (
+            <ChatBubble key={i} role={m.role} content={m.content} />
+          ))}
+          {pendingUser && <ChatBubble role="user" content={pendingUser} />}
+          {mut.isPending && (
+            <div className="flex items-center gap-1 px-3 py-2 w-fit rounded-2xl bg-background border">
+              <Dot delay="0ms" />
+              <Dot delay="150ms" />
+              <Dot delay="300ms" />
+            </div>
+          )}
+        </div>
+      )}
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          send(input);
+        }}
+        className="flex gap-2"
+      >
+        <Input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Berätta hur du känner dig eller vad du vill göra…"
+          disabled={mut.isPending}
+          className="flex-1"
+        />
+        <Button
+          type="submit"
+          size="icon"
+          disabled={!input.trim() || mut.isPending}
+          aria-label="Skicka"
+        >
+          <Send className="h-4 w-4" />
+        </Button>
+      </form>
+    </div>
   );
 }
+
 
 function ChatBubble({ role, content }: { role: "user" | "coach"; content: string }) {
   if (role === "user") {
