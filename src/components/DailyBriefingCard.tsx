@@ -7,7 +7,7 @@ import { getCoachPlan, getTrainingLoad } from "@/lib/coachplan.functions";
 import { getRecentChoices } from "@/lib/dailychoice.functions";
 import { format, parseISO, differenceInDays } from "date-fns";
 import { sv } from "date-fns/locale";
-import { CoachChatCard } from "./CoachChatCard";
+
 
 function formatPace(secPerKm: number) {
   if (!secPerKm || !isFinite(secPerKm)) return "–";
