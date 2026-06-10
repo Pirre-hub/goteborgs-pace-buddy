@@ -3,8 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getActiveGoal } from "@/lib/goal.functions";
 import { stravaGetRuns } from "@/lib/strava.functions";
-import { getCoachPlan, getTrainingLoad } from "@/lib/coachplan.functions";
-import { getRecentChoices } from "@/lib/dailychoice.functions";
+import { getTrainingLoad } from "@/lib/coachplan.functions";
+
 import { format, parseISO, differenceInDays } from "date-fns";
 import { sv } from "date-fns/locale";
 
