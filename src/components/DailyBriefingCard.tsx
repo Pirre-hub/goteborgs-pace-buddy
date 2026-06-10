@@ -3,11 +3,11 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getActiveGoal } from "@/lib/goal.functions";
 import { stravaGetRuns } from "@/lib/strava.functions";
-import { getCoachPlan, getTrainingLoad } from "@/lib/coachplan.functions";
-import { getRecentChoices } from "@/lib/dailychoice.functions";
+import { getTrainingLoad } from "@/lib/coachplan.functions";
+
 import { format, parseISO, differenceInDays } from "date-fns";
 import { sv } from "date-fns/locale";
-import { CoachChatCard } from "./CoachChatCard";
+
 
 function formatPace(secPerKm: number) {
   if (!secPerKm || !isFinite(secPerKm)) return "–";
@@ -22,32 +22,17 @@ function tsbStatus(tsb: number): { icon: string; label: string } {
   return { icon: "😴", label: "Trött" };
 }
 
-function motivation(tsb: number, daysToGoal: number | null) {
-  if (daysToGoal != null && daysToGoal <= 7 && tsb > 0)
-    return "Kroppen är redo. Sista veckan – lita på träningen.";
-  if (daysToGoal != null && daysToGoal <= 14)
-    return "Tapering-fasen. Håll formen, spara energin.";
-  if (tsb < -10) return "Vila är träning. Ge kroppen tid att bygga upp.";
-  return "Konsekvent träning vinner. Håll kursen.";
-}
-
 export function DailyBriefingCard() {
   const goalFn = useServerFn(getActiveGoal);
   const runsFn = useServerFn(stravaGetRuns);
-  const planFn = useServerFn(getCoachPlan);
   const loadFn = useServerFn(getTrainingLoad);
-  const choicesFn = useServerFn(getRecentChoices);
 
   const goalQ = useQuery({ queryKey: ["active-goal"], queryFn: () => goalFn() });
   const runsQ = useQuery({ queryKey: ["strava-runs"], queryFn: () => runsFn() });
-  const planQ = useQuery({ queryKey: ["coach-plan"], queryFn: () => planFn() });
   const loadQ = useQuery({ queryKey: ["training-load"], queryFn: () => loadFn() });
-  const choicesQ = useQuery({ queryKey: ["recent-choices"], queryFn: () => choicesFn() });
 
   const goal = goalQ.data?.goal;
   const yesterday = runsQ.data?.runs?.[0];
-  const plan = planQ.data?.plan;
-  const today0 = plan?.plan?.[0];
   const tsb = loadQ.data?.tsb ?? 0;
   const daysToGoal = goal
     ? differenceInDays(parseISO(goal.race_date), new Date())
@@ -55,32 +40,8 @@ export function DailyBriefingCard() {
 
   const status = tsbStatus(tsb);
   const today = new Date();
-  const acwr = plan?.acwr ?? null;
 
-  const lastRunStr = yesterday
-    ? `${(yesterday.distance / 1000).toFixed(1)} km @ ${formatPace(
-        yesterday.distance > 0 ? yesterday.moving_time / (yesterday.distance / 1000) : 0,
-      )} (${format(parseISO(yesterday.start_date_local), "d MMM", { locale: sv })})`
-    : "inget pass loggat";
 
-  const todayPlanStr = today0
-    ? `${today0.type}${today0.distance_km != null ? ` ${today0.distance_km}km` : ""} @ ${today0.target_pace}`
-    : "ingen rekommendation";
-
-  const deviations = (choicesQ.data?.choices ?? [])
-    .slice(0, 7)
-    .filter((c) => c.actual_choice && c.actual_choice !== c.recommended_type)
-    .map((c) => `${c.date}: rek ${c.recommended_type} → valde ${c.actual_choice}`)
-    .join("; ");
-
-  const planContext = {
-    todayPlan: todayPlanStr,
-    acwr,
-    tsb: loadQ.data ? tsb : null,
-    lastRun: lastRunStr,
-    daysToRace: daysToGoal ?? 0,
-    recentDeviations: deviations,
-  };
 
   return (
     <Card className="border-l-4" style={{ borderLeftColor: "#FC4C02" }}>
@@ -133,7 +94,7 @@ export function DailyBriefingCard() {
           </div>
         )}
 
-        <CoachChatCard planContext={planContext} />
+
 
       </CardContent>
     </Card>
