@@ -22,32 +22,17 @@ function tsbStatus(tsb: number): { icon: string; label: string } {
   return { icon: "😴", label: "Trött" };
 }
 
-function motivation(tsb: number, daysToGoal: number | null) {
-  if (daysToGoal != null && daysToGoal <= 7 && tsb > 0)
-    return "Kroppen är redo. Sista veckan – lita på träningen.";
-  if (daysToGoal != null && daysToGoal <= 14)
-    return "Tapering-fasen. Håll formen, spara energin.";
-  if (tsb < -10) return "Vila är träning. Ge kroppen tid att bygga upp.";
-  return "Konsekvent träning vinner. Håll kursen.";
-}
-
 export function DailyBriefingCard() {
   const goalFn = useServerFn(getActiveGoal);
   const runsFn = useServerFn(stravaGetRuns);
-  const planFn = useServerFn(getCoachPlan);
   const loadFn = useServerFn(getTrainingLoad);
-  const choicesFn = useServerFn(getRecentChoices);
 
   const goalQ = useQuery({ queryKey: ["active-goal"], queryFn: () => goalFn() });
   const runsQ = useQuery({ queryKey: ["strava-runs"], queryFn: () => runsFn() });
-  const planQ = useQuery({ queryKey: ["coach-plan"], queryFn: () => planFn() });
   const loadQ = useQuery({ queryKey: ["training-load"], queryFn: () => loadFn() });
-  const choicesQ = useQuery({ queryKey: ["recent-choices"], queryFn: () => choicesFn() });
 
   const goal = goalQ.data?.goal;
   const yesterday = runsQ.data?.runs?.[0];
-  const plan = planQ.data?.plan;
-  const today0 = plan?.plan?.[0];
   const tsb = loadQ.data?.tsb ?? 0;
   const daysToGoal = goal
     ? differenceInDays(parseISO(goal.race_date), new Date())
@@ -55,10 +40,7 @@ export function DailyBriefingCard() {
 
   const status = tsbStatus(tsb);
   const today = new Date();
-  const acwr = plan?.acwr ?? null;
 
-  void today0;
-  void choicesQ;
 
 
   return (
