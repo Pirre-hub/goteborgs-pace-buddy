@@ -133,7 +133,7 @@ export function DailyBriefingCard() {
           </div>
         )}
 
-        <CoachChatCard planContext={planContext} />
+
 
       </CardContent>
     </Card>
