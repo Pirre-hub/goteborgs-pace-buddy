@@ -327,11 +327,12 @@ ATLETENS VAL ÄR DATA, INTE OLYDNAD:
 
 export const clearTodayConversation = createServerFn({ method: "POST" }).handler(
   async () => {
-    const dateStr = todayStr();
+    // Chatten visar 7 dagars historik, så "Rensa" måste ta bort hela
+    // den synliga historiken — annars ser knappen ut att inte göra något.
     const { error } = await supabaseAdmin
       .from("coach_conversations")
       .delete()
-      .eq("date", dateStr);
+      .gte("date", "1900-01-01");
     if (error) throw new Error(error.message);
     return { cleared: true };
   },
