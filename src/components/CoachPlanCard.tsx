@@ -1,15 +1,17 @@
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getCoachPlan, refreshCoachPlan } from "@/lib/coachplan.functions";
+import { getCoachPlan, refreshCoachPlan, getTrainingLoad } from "@/lib/coachplan.functions";
+import { getActiveGoal } from "@/lib/goal.functions";
+import { stravaGetRuns } from "@/lib/strava.functions";
+import { getRecentChoices } from "@/lib/dailychoice.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import {
-  Activity,
   Loader2,
   ChevronDown,
   ChevronUp,
-  Zap,
   TrendingUp,
   AlertTriangle,
   ShieldAlert,
@@ -17,6 +19,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { acwrDecision } from "@/lib/training";
+import { differenceInDays, parseISO, format } from "date-fns";
+import { sv } from "date-fns/locale";
 import {
   Table,
   TableBody,
@@ -25,6 +29,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { CoachChatCard } from "./CoachChatCard";
+import logoUrl from "@/assets/pirrecoachen-logo.png";
+
 
 const ZONE_LABEL: Record<string, { text: string; tone: string; Icon: typeof TrendingUp }> = {
   low: { text: "Undertränad", tone: "text-blue-500", Icon: Bed },
