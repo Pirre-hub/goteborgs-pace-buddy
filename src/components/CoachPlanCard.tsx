@@ -82,18 +82,33 @@ function passMetric(d: {
   return `${d.distance_km != null ? `${d.distance_km} km` : "–"}${d.target_pace ? ` • ${d.target_pace}` : ""}`;
 }
 
+function formatPace(secPerKm: number) {
+  if (!secPerKm || !isFinite(secPerKm)) return "–";
+  const m = Math.floor(secPerKm / 60);
+  const s = Math.round(secPerKm % 60);
+  return `${m}:${s.toString().padStart(2, "0")}/km`;
+}
+
 export function CoachPlanCard() {
   const qc = useQueryClient();
   const [showMore, setShowMore] = useState(false);
 
   const getFn = useServerFn(getCoachPlan);
   const refreshFn = useServerFn(refreshCoachPlan);
+  const goalFn = useServerFn(getActiveGoal);
+  const runsFn = useServerFn(stravaGetRuns);
+  const loadFn = useServerFn(getTrainingLoad);
+  const choicesFn = useServerFn(getRecentChoices);
 
   const q = useQuery({
     queryKey: ["coach-plan"],
     queryFn: () => getFn(),
     refetchOnWindowFocus: true,
   });
+  const goalQ = useQuery({ queryKey: ["active-goal"], queryFn: () => goalFn() });
+  const runsQ = useQuery({ queryKey: ["strava-runs"], queryFn: () => runsFn() });
+  const loadQ = useQuery({ queryKey: ["training-load"], queryFn: () => loadFn() });
+  const choicesQ = useQuery({ queryKey: ["recent-choices"], queryFn: () => choicesFn() });
 
   const refreshMut = useMutation({
     mutationFn: (vars?: { force?: boolean }) => refreshFn({ data: vars ?? {} }),
@@ -111,13 +126,45 @@ export function CoachPlanCard() {
     console.log("[CoachPlan] full plan (", plan.plan.length, "days):", plan.plan);
   }
 
+  // planContext för chatten – så samma siffror som visas ovan skickas till coachen
+  const goal = goalQ.data?.goal;
+  const yesterday = runsQ.data?.runs?.[0];
+  const today0 = plan?.plan?.[0];
+  const tsb = loadQ.data?.tsb ?? null;
+  const daysToGoal = goal
+    ? Math.max(0, differenceInDays(parseISO(goal.race_date), new Date()))
+    : 0;
+  const lastRunStr = yesterday
+    ? `${(yesterday.distance / 1000).toFixed(1)} km @ ${formatPace(
+        yesterday.distance > 0 ? yesterday.moving_time / (yesterday.distance / 1000) : 0,
+      )} (${format(parseISO(yesterday.start_date_local), "d MMM", { locale: sv })})`
+    : "inget pass loggat";
+  const todayPlanStr = today0
+    ? `${today0.type}${today0.distance_km != null ? ` ${today0.distance_km}km` : ""}${today0.target_pace ? ` @ ${today0.target_pace}` : ""}`
+    : "ingen rekommendation";
+  const deviations = (choicesQ.data?.choices ?? [])
+    .slice(0, 7)
+    .filter((c) => c.actual_choice && c.actual_choice !== c.recommended_type)
+    .map((c) => `${c.date}: rek ${c.recommended_type} → valde ${c.actual_choice}`)
+    .join("; ");
+
+  const planContext = {
+    todayPlan: todayPlanStr,
+    acwr: plan?.acwr ?? null,
+    tsb,
+    lastRun: lastRunStr,
+    daysToRace: daysToGoal,
+    recentDeviations: deviations,
+  };
+
   return (
     <Card className="border-strava/30">
       <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
         <CardTitle className="text-base flex items-center gap-2">
-          <Activity className="h-4 w-4 text-strava" />
-          ACWR-coach & 7-dagarsplan
+          <img src={logoUrl} alt="" className="h-5 w-5" />
+          Pirrecoachen
         </CardTitle>
+
         <Button
           size="sm"
           variant="outline"
