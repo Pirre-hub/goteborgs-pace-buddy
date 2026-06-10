@@ -57,30 +57,9 @@ export function DailyBriefingCard() {
   const today = new Date();
   const acwr = plan?.acwr ?? null;
 
-  const lastRunStr = yesterday
-    ? `${(yesterday.distance / 1000).toFixed(1)} km @ ${formatPace(
-        yesterday.distance > 0 ? yesterday.moving_time / (yesterday.distance / 1000) : 0,
-      )} (${format(parseISO(yesterday.start_date_local), "d MMM", { locale: sv })})`
-    : "inget pass loggat";
+  void today0;
+  void choicesQ;
 
-  const todayPlanStr = today0
-    ? `${today0.type}${today0.distance_km != null ? ` ${today0.distance_km}km` : ""} @ ${today0.target_pace}`
-    : "ingen rekommendation";
-
-  const deviations = (choicesQ.data?.choices ?? [])
-    .slice(0, 7)
-    .filter((c) => c.actual_choice && c.actual_choice !== c.recommended_type)
-    .map((c) => `${c.date}: rek ${c.recommended_type} → valde ${c.actual_choice}`)
-    .join("; ");
-
-  const planContext = {
-    todayPlan: todayPlanStr,
-    acwr,
-    tsb: loadQ.data ? tsb : null,
-    lastRun: lastRunStr,
-    daysToRace: daysToGoal ?? 0,
-    recentDeviations: deviations,
-  };
 
   return (
     <Card className="border-l-4" style={{ borderLeftColor: "#FC4C02" }}>
