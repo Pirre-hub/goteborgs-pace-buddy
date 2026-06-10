@@ -360,7 +360,11 @@ export function CoachPlanCard() {
             )}
           </>
         )}
+
+        <Separator className="my-2" />
+        <CoachChatCard planContext={planContext} />
       </CardContent>
     </Card>
   );
 }
+
