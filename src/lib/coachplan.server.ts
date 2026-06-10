@@ -667,8 +667,7 @@ KONTROLL INNAN DU SVARAR: räkna dina 14 dagar – det MÅSTE finnas exakt 2 gym
     },
     body: JSON.stringify({
       model: AI_MODEL,
-      max_tokens: 8192,
-      temperature: 0,
+      max_tokens: 2000,
       system: personalizePrompt(system),
       messages: [{ role: "user", content: personalizePrompt(user) }],
       tools: [TOOL],
